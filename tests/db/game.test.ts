@@ -319,6 +319,16 @@ describe("friend match", () => {
     expect(elos.rows.every((r) => r.elo === 900 && r.matches_played === 0)).toBe(true);
   });
 
+  test("host waiting in the lobby isn't counted as disconnected", async () => {
+    const a = await makeUser(db, "alice");
+    const b = await makeUser(db, "bob");
+    const { match_id, code } = await rpc<{ match_id: string; code: string }>(db, a, "create_friend_match");
+    await db.query(`update match_players set last_seen = now() - interval '2 minutes' where user_id = $1`, [a]);
+    await rpc(db, b, "join_friend_match", [code]);
+    await startedAgo(db, match_id, 1);
+    expect(await rpc(db, b, "claim_forfeit", [match_id])).toEqual({ status: "opponent_connected" });
+  });
+
   test("bad code is rejected", async () => {
     const a = await makeUser(db, "alice");
     await expect(rpc(db, a, "join_friend_match", ["ZZZZZZ"])).rejects.toThrow(/invalid_code/);
