@@ -56,6 +56,7 @@ Nobody pushes straight to `main`.
 | `npm run dev` | Start the site locally |
 | `npm run lint` | Check your code for mistakes. Run before every PR |
 | `npm run build` | Build the production site. If this fails, the PR can't merge |
+| `npm test` | Play full matches against a test database. Checks scoring, Elo, matchmaking, anti-cheat |
 
 ## Stack
 
