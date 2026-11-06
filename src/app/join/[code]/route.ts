@@ -15,6 +15,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ code
   if (error?.message.includes("no_profile")) {
     return NextResponse.redirect(`${origin}/onboarding?next=${encodeURIComponent(here)}`);
   }
+  if (error?.message.includes("needs_rename")) {
+    return NextResponse.redirect(`${origin}/onboarding/rename?next=${encodeURIComponent(here)}`);
+  }
   if (error || !matchId) return NextResponse.redirect(`${origin}/play?join_error=1`);
   return NextResponse.redirect(`${origin}/match/${matchId}`);
 }

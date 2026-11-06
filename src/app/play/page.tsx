@@ -1,4 +1,5 @@
 import { requirePlayer } from "@/lib/session";
+import Link from "next/link";
 import Lobby from "@/components/Lobby";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +13,9 @@ export default async function PlayPage() {
     <main className="mx-auto flex min-h-screen max-w-xl flex-col gap-10 px-6 py-12">
       <header className="flex items-baseline justify-between">
         <h1 className="font-serif text-4xl tracking-tight">erudent</h1>
-        <span className="text-sm text-muted">@{profile.username}</span>
+        <Link href={`/u/${encodeURIComponent(profile.username)}`} className="inline-flex min-h-11 items-center text-sm text-muted underline-offset-4 hover:underline">
+          @{profile.username}
+        </Link>
       </header>
 
       <section className="flex flex-col gap-1 border border-line p-5">
