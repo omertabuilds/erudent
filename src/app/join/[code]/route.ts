@@ -15,6 +15,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ code
   if (error?.message.includes("no_profile")) {
     return NextResponse.redirect(`${origin}/onboarding?next=${encodeURIComponent(here)}`);
   }
+  if (error?.message.includes("no_access")) return NextResponse.redirect(`${origin}/?access=required`);
   if (error?.message.includes("needs_rename")) {
     return NextResponse.redirect(`${origin}/onboarding/rename?next=${encodeURIComponent(here)}`);
   }

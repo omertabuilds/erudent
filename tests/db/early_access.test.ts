@@ -163,6 +163,29 @@ describe("access codes", () => {
   });
 });
 
+describe("has_access", () => {
+  test("false until you redeem a code, then true; another account's code doesn't count", async () => {
+    const [code] = await makeCodes(1);
+    const ada = await signedInUser();
+    const bob = await signedInUser();
+    expect(await rpc(db, ada, "has_access")).toBe(false);
+
+    expect(await call("redeem_access_code", code, "1.1.1.1", ada)).toBe(true);
+    expect(await rpc(db, ada, "has_access")).toBe(true);
+    expect(await rpc(db, bob, "has_access")).toBe(false);
+  });
+
+  test("a bad code doesn't grant access", async () => {
+    const ada = await signedInUser();
+    expect(await call("redeem_access_code", UNISSUED, "1.1.1.1", ada)).toBe(false);
+    expect(await rpc(db, ada, "has_access")).toBe(false);
+  });
+
+  test("needs sign-in", async () => {
+    await expect(asUser(db, null, `select public.has_access()`)).rejects.toThrow(/permission denied/);
+  });
+});
+
 describe("schema", () => {
   test("every function in public and private pins its search_path", async () => {
     const res = await db.query<{ fn: string }>(`
