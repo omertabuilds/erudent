@@ -1,0 +1,54 @@
+/* Erudent — generated from tokens.json */
+:root, [data-theme="dark"] {
+  --paper: #0f0f0e;
+  --surface: #181816;
+  --sunken: #0a0a09;
+  --hairline: #2c2b28;
+  --rule: #73716a;
+  --ink: #ecebe6;
+  --on-ink: #0f0f0e;
+  --ink-muted: #a3a19a;
+  --pencil: #ec5a3f;
+  --focus: var(--ink);
+}
+[data-theme="light"] {
+  --paper: #f4f3ef;
+  --surface: #ffffff;
+  --sunken: #eae8e1;
+  --hairline: #dcd9d0;
+  --rule: #87847b;
+  --ink: #141413;
+  --on-ink: #f4f3ef;
+  --ink-muted: #5c5a53;
+  --pencil: #b8311b;
+  --focus: var(--ink);
+}
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-16: 64px;
+  --space-32: 128px;
+  --radius-none: 0px;
+  --radius-full: 9999px;
+  --font-display: "Bodoni Moda", Didot, "Bodoni 72", Georgia, serif;
+  --font-serif: "Source Serif 4", "Source Serif Pro", Georgia, serif;
+  --font-sans: "Source Sans 3", "Source Sans Pro", "Helvetica Neue", Arial, sans-serif;
+}
+.display-xl { font-family: var(--font-display); font-size: 88px; line-height: 88px; font-weight: 400; letter-spacing: -0.02em; }
+.display { font-family: var(--font-display); font-size: 56px; line-height: 60px; font-weight: 400; letter-spacing: -0.015em; }
+.title { font-family: var(--font-display); font-size: 34px; line-height: 40px; font-weight: 400; letter-spacing: -0.01em; }
+.heading { font-family: var(--font-display); font-size: 24px; line-height: 30px; font-weight: 500; }
+.body-lg { font-family: var(--font-serif); font-size: 20px; line-height: 31px; font-weight: 400; }
+.body { font-family: var(--font-serif); font-size: 17px; line-height: 27px; font-weight: 400; }
+.body-sm { font-family: var(--font-serif); font-size: 15px; line-height: 23px; font-weight: 400; }
+.eyebrow { font-family: var(--font-serif); font-size: 15px; line-height: 20px; font-weight: 500; letter-spacing: 0.08em; }
+.theorem { font-family: var(--font-serif); font-size: 17px; line-height: 27px; font-weight: 400; }
+.label { font-family: var(--font-sans); font-size: 14px; line-height: 18px; font-weight: 600; letter-spacing: 0.01em; }
+.caption { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 400; }
+.score { font-family: var(--font-display); font-size: 48px; line-height: 52px; font-weight: 400; }
+.timer { font-family: var(--font-serif); font-size: 28px; line-height: 32px; font-weight: 500; }
+.numeric { font-family: var(--font-serif); font-size: 15px; line-height: 23px; font-weight: 500; }
