@@ -66,12 +66,14 @@ describe("profiles", () => {
     expect(cols.rows.map((r) => r.column_name)).not.toContain("birth_date");
   });
 
-  test("usernames are lowercase, 3–20 chars, unique", async () => {
+  test("usernames keep their case and are unique ignoring it (full rules: usernames.test.ts)", async () => {
     await makeUser(db, "Alice_1");
     const id = crypto.randomUUID();
     await db.query(`insert into auth.users (id) values ($1)`, [id]);
     await expect(rpc(db, id, "create_profile", ["alice_1", "2000-01-01"])).rejects.toThrow(/username_taken/);
-    await expect(rpc(db, id, "create_profile", ["a!", "2000-01-01"])).rejects.toThrow(/invalid_username/);
+    await expect(rpc(db, id, "create_profile", ["a!", "2000-01-01"])).rejects.toThrow(/username_length/);
+    const res = await db.query<{ username: string }>(`select username from profiles`);
+    expect(res.rows).toEqual([{ username: "Alice_1" }]);
   });
 });
 

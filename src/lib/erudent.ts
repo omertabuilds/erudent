@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { USERNAME_MESSAGES, type UsernameProblem } from "@/lib/username";
 
 /**
  * Typed wrappers for every database function the app calls.
@@ -67,6 +68,41 @@ export type LeaderboardRow = {
   draws: number;
 };
 
+/** The signed-in player. needs_rename is private: only they can see it. */
+export type MyPlayer = {
+  id: string;
+  username: string;
+  elo: number;
+  matches_played: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  needs_rename: boolean;
+};
+
+export type ProfileSummary = {
+  username: string;
+  elo: number;
+  rank: string;
+  matches_played: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  created_at: string;
+};
+
+export type RecentMatch = {
+  match_id: string;
+  mode: "ranked" | "friend" | "async";
+  finished_at: string;
+  result: "win" | "loss" | "draw" | null;
+  elo_before: number;
+  elo_after: number | null;
+  opponent: string | null;
+  score: number;
+  opponent_score: number | null;
+};
+
 async function call<T>(sb: SupabaseClient, fn: string, args?: Record<string, unknown>): Promise<T> {
   const { data, error } = await sb.rpc(fn, args);
   if (error) throw new Error(error.message);
@@ -74,6 +110,8 @@ async function call<T>(sb: SupabaseClient, fn: string, args?: Record<string, unk
 }
 
 export const api = {
+  /** Signed in. Null if you haven't made a profile yet. */
+  myPlayer: async (sb: SupabaseClient) => (await call<MyPlayer[]>(sb, "my_player"))[0] ?? null,
   createProfile: (sb: SupabaseClient, username: string, birthDate: string) =>
     call(sb, "create_profile", { p_username: username, p_birth_date: birthDate }),
   joinQueue: (sb: SupabaseClient) => call<string | null>(sb, "join_queue"),
@@ -95,9 +133,17 @@ export const api = {
     call<void>(sb, "report_player", { p_match: id, p_reason: reason }),
   /** For Axel's leaderboard page. Works signed out. */
   leaderboard: (sb: SupabaseClient, limit = 100) => call<LeaderboardRow[]>(sb, "get_leaderboard", { p_limit: limit }),
-  /** For Axel's profile page. Works signed out. */
+  /** For /u/[username]. Any case. Null if there's no such player. Works signed out. */
+  profile: async (sb: SupabaseClient, username: string) =>
+    (await call<ProfileSummary[]>(sb, "get_profile", { p_username: username }))[0] ?? null,
+  /** Last 10 finished duels, newest first. Works signed out. */
   recentMatches: (sb: SupabaseClient, username: string) =>
-    call<unknown[]>(sb, "get_recent_matches", { p_username: username }),
+    call<RecentMatch[]>(sb, "get_recent_matches", { p_username: username }),
+  /** Signed in. Null if the name is allowed and free (your own counts as free), else why not. */
+  checkUsername: (sb: SupabaseClient, username: string) =>
+    call<UsernameProblem | null>(sb, "check_username", { p_username: username }),
+  /** Signed in, and only when your name was flagged (myPlayer().needs_rename). */
+  renameUsername: (sb: SupabaseClient, username: string) => call(sb, "rename_username", { p_username: username }),
 
   // Early access. join_waitlist and check_access_code rate-limit by IP, so call them
   // from the browser client, never from server code (every visitor would share one IP).
@@ -114,8 +160,9 @@ export function friendlyError(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   const known: Record<string, string> = {
     too_young: "You need to be 13 or older to play.",
-    username_taken: "That username is taken.",
-    invalid_username: "Usernames are 3–20 characters: letters, numbers, underscores.",
+    ...USERNAME_MESSAGES,
+    needs_rename: "Pick a new username first.",
+    rename_not_needed: "Your username is fine as it is.",
     profile_exists: "You already have a profile.",
     invalid_code: "That code doesn't match a waiting game.",
     match_full: "That game already has two players.",

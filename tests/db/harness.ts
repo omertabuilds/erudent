@@ -20,10 +20,15 @@ const SUPABASE_STUBS = `
 
 const MIGRATIONS_DIR = join(__dirname, "../../supabase/migrations");
 
-export async function createDb() {
+/**
+ * A fresh database with every migration applied, in filename order.
+ * `before` runs a step just before the named migration, e.g. to add rows it has to cope with.
+ */
+export async function createDb(before: Record<string, (db: PGlite) => Promise<void>> = {}) {
   const db = new PGlite();
   await db.exec(SUPABASE_STUBS);
   for (const file of readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort()) {
+    await before[file]?.(db);
     await db.exec(readFileSync(join(MIGRATIONS_DIR, file), "utf8"));
   }
   return db;
