@@ -1,32 +1,56 @@
-const ranks = ["Novice", "Apprentice", "Scholar", "Savant", "Sage", "Erudite"];
+import type { Metadata } from "next";
+import Image from "next/image";
+import EarlyAccess, { type RedeemError } from "@/components/EarlyAccess";
 
-export default function Home() {
+export const metadata: Metadata = {
+  title: "Erudent — early access",
+};
+
+const gutter = "px-[clamp(20px,4vw,56px)]";
+
+export default async function Home({ searchParams }: { searchParams: Promise<{ redeem?: string }> }) {
+  // Set by /redeem/[code] when a code fails after sign-in.
+  const { redeem } = await searchParams;
+  const redeemError: RedeemError | null =
+    redeem === "invalid" || redeem === "limited" || redeem === "error" ? redeem : null;
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-10 px-6 py-16">
-      <div className="flex flex-col gap-4">
-        <h1 className="font-serif text-6xl tracking-tight">erudent</h1>
-        <p className="max-w-md text-lg text-muted">
-          Ranked 1v1 math duels. Three questions, five minutes. Climb from
-          Novice to Erudite.
-        </p>
-      </div>
+    <div className="flex min-h-screen flex-col bg-paper font-ui text-[17px] leading-[26px] text-ink">
+      <header className={`flex items-center gap-3 py-6 ${gutter}`}>
+        <Image src="/logos/erudent-mark-small.svg" alt="" width={36} height={36} className="block size-9" />
+        <span className="text-[22px] leading-none font-extrabold tracking-[-0.02em]">Erudent</span>
+      </header>
 
-      <ol className="flex flex-wrap gap-2" aria-label="Ranks">
-        {ranks.map((rank, i) => (
-          <li
-            key={rank}
-            className={
-              i === ranks.length - 1
-                ? "border border-foreground bg-foreground px-3 py-1 text-sm text-background"
-                : "border border-foreground px-3 py-1 text-sm"
-            }
-          >
-            {rank}
-          </li>
-        ))}
-      </ol>
+      <main className={`flex flex-[1_0_auto] items-center pt-6 pb-14 ${gutter}`}>
+        <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center justify-between gap-x-16 gap-y-12">
+          <div className="max-w-[620px] min-w-0 flex-[1_1_520px]">
+            <h1 className="text-[clamp(52px,8vw,104px)] leading-[.95] font-extrabold tracking-[-0.04em]">
+              Math duels.
+              <br />
+              Ranked.
+            </h1>
+            <p className="mt-6 max-w-[460px] text-[19px] leading-[29px] text-ink-muted">
+              Same three problems. Five minutes. One opponent. Early access opens by invitation.
+            </p>
 
-      <p className="text-sm text-muted">Coming December 13, 2026. Built by omertà.</p>
-    </main>
+            <EarlyAccess redeemError={redeemError} />
+          </div>
+
+          <Image
+            src="/logos/erudent-mark.svg"
+            alt=""
+            width={420}
+            height={420}
+            priority
+            className="block h-auto w-[min(100%,420px)] flex-[0_1_420px]"
+          />
+        </div>
+      </main>
+
+      <footer className={`flex flex-wrap justify-between gap-2 border-t border-hairline py-5 text-[13px] text-ink-muted ${gutter}`}>
+        <span>Mathematics arena · opening by invitation</span>
+        <span>© 2026 Erudent · Built by Omerta</span>
+      </footer>
+    </div>
   );
 }
