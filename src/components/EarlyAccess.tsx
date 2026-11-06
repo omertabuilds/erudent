@@ -34,8 +34,8 @@ const errorText = "mt-[10px] text-[14px] font-semibold text-pencil";
 const done = "mt-5 text-[19px] leading-[29px]";
 
 /** Early-access entry: join the waitlist, or bring an invitation code. */
-export default function EarlyAccess({ redeemError }: { redeemError: RedeemError | null }) {
-  const [tab, setTab] = useState<"wait" | "code">(redeemError ? "code" : "wait");
+export default function EarlyAccess({ redeemError, needsCode = false }: { redeemError: RedeemError | null; needsCode?: boolean }) {
+  const [tab, setTab] = useState<"wait" | "code">(redeemError || needsCode ? "code" : "wait");
 
   const [email, setEmail] = useState("");
   const [waitError, setWaitError] = useState<string | null>(null);
@@ -85,6 +85,11 @@ export default function EarlyAccess({ redeemError }: { redeemError: RedeemError 
 
   return (
     <div className="mt-10 max-w-[520px]">
+      {needsCode && (
+        <p className="mb-4 text-[17px] leading-[26px] font-semibold text-ink" role="status">
+          You need an invite code to play. Enter it below or join the waitlist.
+        </p>
+      )}
       <div className="flex border border-rule" role="group" aria-label="Choose how to get in">
         <button type="button" className={tabButton} aria-pressed={tab === "wait"} onClick={() => setTab("wait")}>
           Join the waitlist

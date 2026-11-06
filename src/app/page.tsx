@@ -8,9 +8,10 @@ export const metadata: Metadata = {
 
 const gutter = "px-[clamp(20px,4vw,56px)]";
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ redeem?: string }> }) {
-  // Set by /redeem/[code] when a code fails after sign-in.
-  const { redeem } = await searchParams;
+export default async function Home({ searchParams }: { searchParams: Promise<{ redeem?: string; access?: string }> }) {
+  // redeem: set by /redeem/[code] when a code fails after sign-in.
+  // access=required: set when /play turns away a player without a redeemed code.
+  const { redeem, access } = await searchParams;
   const redeemError: RedeemError | null =
     redeem === "invalid" || redeem === "limited" || redeem === "error" ? redeem : null;
 
@@ -33,7 +34,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
               Same three problems. Five minutes. One opponent. Early access opens by invitation.
             </p>
 
-            <EarlyAccess redeemError={redeemError} />
+            <EarlyAccess redeemError={redeemError} needsCode={access === "required"} />
           </div>
 
           <Image

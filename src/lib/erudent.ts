@@ -110,6 +110,8 @@ async function call<T>(sb: SupabaseClient, fn: string, args?: Record<string, unk
 }
 
 export const api = {
+  /** Signed in. True once you've redeemed an invitation code. */
+  hasAccess: (sb: SupabaseClient) => call<boolean>(sb, "has_access"),
   /** Signed in. Null if you haven't made a profile yet. */
   myPlayer: async (sb: SupabaseClient) => (await call<MyPlayer[]>(sb, "my_player"))[0] ?? null,
   createProfile: (sb: SupabaseClient, username: string, birthDate: string) =>
@@ -162,6 +164,7 @@ export function friendlyError(e: unknown): string {
     too_young: "You need to be 13 or older to play.",
     ...USERNAME_MESSAGES,
     needs_rename: "Pick a new username first.",
+    no_access: "You need an invite code to play.",
     rename_not_needed: "Your username is fine as it is.",
     profile_exists: "You already have a profile.",
     invalid_code: "That code doesn't match a waiting game.",

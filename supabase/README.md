@@ -37,6 +37,7 @@ functions (RPCs) in `migrations/20261105000000_core.sql`. Wrappers for each live
 | `check_username(username)` | signed in | Null if allowed and free, else the reason (`username_taken`, `username_blocked`…). |
 | `rename_username(username)` | signed in | Only for flagged names. Elo and history stay. |
 | `my_player()` | signed in | Your own profile plus your private `needs_rename`. |
+| `has_access()` | signed in | True once you've redeemed an invitation code. Without one, queueing, creating or joining a match and answering raise `no_access`. |
 
 **Usernames:** 3–20 of a–z A–Z 0–9 _ . -, starting with a letter or digit, never two
 symbols in a row. Shown as typed, unique ignoring case. Reserved names and the wordlist
