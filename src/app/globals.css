@@ -1,33 +1,38 @@
 @import "tailwindcss";
 
-/* Erudent brand: black and white, minimal. Use these tokens instead of raw colors. */
-:root {
-  --background: #ffffff;
-  --foreground: #111111;
-  --muted: #6b6b6b;
-  --line: #e0e0e0;
-}
+/* Brand tokens (paper, ink, pencil…). Copied from erudent-design/tokens.css: change values there first. */
+@import "./tokens.css";
 
+/* Expose the tokens as Tailwind colors: bg-paper, text-ink, border-rule, text-pencil…
+   The old names (background, foreground, muted, line) point at the new tokens. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-line: var(--line);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-serif: "Times New Roman", Times, serif;
-}
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-hairline: var(--hairline);
+  --color-rule: var(--rule);
+  --color-ink: var(--ink);
+  --color-on-ink: var(--on-ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-pencil: var(--pencil);
+  --color-focus: var(--focus);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #111111;
-    --foreground: #ffffff;
-    --muted: #a3a3a3;
-    --line: #2a2a2a;
-  }
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-muted: var(--ink-muted);
+  --color-line: var(--hairline);
+
+  /* Archivo, loaded in layout.tsx */
+  --font-ui: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--paper);
+  color: var(--ink);
   font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }

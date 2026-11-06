@@ -98,6 +98,15 @@ export const api = {
   /** For Axel's profile page. Works signed out. */
   recentMatches: (sb: SupabaseClient, username: string) =>
     call<unknown[]>(sb, "get_recent_matches", { p_username: username }),
+
+  // Early access. join_waitlist and check_access_code rate-limit by IP, so call them
+  // from the browser client, never from server code (every visitor would share one IP).
+  /** Works signed out. Already on the list is a quiet success. */
+  joinWaitlist: (sb: SupabaseClient, email: string) => call<void>(sb, "join_waitlist", { p_email: email }),
+  /** Works signed out. True if the code is real and unused. Doesn't use it up. */
+  checkAccessCode: (sb: SupabaseClient, code: string) => call<boolean>(sb, "check_access_code", { p_code: code }),
+  /** Signed in. Ties the code to this account. False if the code is bad or used. */
+  redeemAccessCode: (sb: SupabaseClient, code: string) => call<boolean>(sb, "redeem_access_code", { p_code: code }),
 };
 
 /** Turns database error codes into words a player understands. */
@@ -114,6 +123,8 @@ export function friendlyError(e: unknown): string {
     no_profile: "Finish setting up your profile first.",
     not_participant: "You're not in this match.",
     not_signed_in: "Sign in first.",
+    invalid_email: "Enter a valid email address.",
+    rate_limited: "Too many tries. Wait a few minutes and try again.",
   };
   for (const [code, text] of Object.entries(known)) if (msg.includes(code)) return text;
   return "Something went wrong. Try again.";

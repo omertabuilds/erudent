@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Erudent — early access</title>
+<link rel="icon" href="logos/erudent-mark-small.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  /* Reference only: plain HTML so it opens anywhere. Rebuild in the app's real stack. */
+  :root { --font-ui: Archivo, "Helvetica Neue", Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-ui); font-size: 17px; line-height: 26px; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  input::placeholder { color: var(--ink-muted); opacity: 1; }
+  .page { min-height: 100vh; display: flex; flex-direction: column; }
+  header { padding: 24px clamp(20px, 4vw, 56px); display: flex; align-items: center; gap: 12px; }
+  header img { width: 36px; height: 36px; display: block; }
+  .brand { font-size: 22px; line-height: 1; font-weight: 800; letter-spacing: -0.02em; }
+  main { flex: 1 0 auto; display: flex; align-items: center; padding: 24px clamp(20px, 4vw, 56px) 56px; }
+  .wrap { width: 100%; max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 48px 64px; }
+  .copy { flex: 1 1 520px; min-width: 0; max-width: 620px; }
+  h1 { margin: 0; font-size: clamp(52px, 8vw, 104px); line-height: .95; font-weight: 800; letter-spacing: -0.04em; }
+  .lede { margin: 24px 0 0; font-size: 19px; line-height: 29px; color: var(--ink-muted); max-width: 460px; }
+  .entry { margin-top: 40px; max-width: 520px; }
+  .switch { display: flex; border: 1px solid var(--rule); }
+  .switch button { flex: 1 1 0; min-height: 48px; padding: 0 16px; border: 0; border-radius: 0; background: transparent; color: var(--ink); font: 600 15px/1 var(--font-ui); cursor: pointer; }
+  .switch button + button { border-left: 1px solid var(--rule); }
+  .switch button[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); }
+  form { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .field { flex: 1 1 240px; min-width: 0; height: 60px; padding: 0 18px; background: var(--sunken); color: var(--ink); border: 1px solid var(--rule); border-radius: 0; font: 400 18px var(--font-ui); }
+  .field.code { font-size: 20px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+  .primary { flex: 0 0 auto; height: 60px; padding: 0 28px; background: var(--ink); color: var(--on-ink); border: 0; border-radius: 0; box-shadow: inset 0 -4px 0 var(--rule); font: 700 17px var(--font-ui); cursor: pointer; }
+  .primary:active { box-shadow: inset 0 -1px 0 var(--rule); transform: translateY(3px); }
+  .note { margin: 12px 0 0; font-size: 13px; line-height: 20px; color: var(--ink-muted); }
+  .error { margin: 10px 0 0; font-size: 14px; font-weight: 600; color: var(--pencil); }
+  .done { margin: 20px 0 0; font-size: 19px; line-height: 29px; }
+  .qed { color: var(--pencil); }
+  .hero-mark { flex: 0 1 420px; width: min(100%, 420px); height: auto; display: block; }
+  footer { padding: 20px clamp(20px, 4vw, 56px); border-top: 1px solid var(--hairline); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--ink-muted); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <img src="logos/erudent-mark-small.svg" alt="">
+    <span class="brand">Erudent</span>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <div class="copy">
+        <h1>Math duels.<br>Ranked.</h1>
+        <p class="lede">Same three problems. Five minutes. One opponent. Early access opens by invitation.</p>
+
+        <div class="entry">
+          <div class="switch" role="group" aria-label="Choose how to get in">
+            <button type="button" id="tab-wait" aria-pressed="true">Join the waitlist</button>
+            <button type="button" id="tab-code" aria-pressed="false">I have a code</button>
+          </div>
+
+          <section id="panel-wait">
+            <form id="form-wait" novalidate>
+              <label for="email" class="sr-only">Email address</label>
+              <input class="field" id="email" type="email" autocomplete="email" placeholder="you@school.edu">
+              <button class="primary" type="submit">Get a code</button>
+            </form>
+            <p class="error" id="err-wait" role="alert" hidden>Enter a valid email address.</p>
+            <p class="note" id="note-wait">One email when your code is ready. Nothing else.</p>
+            <p class="done" id="done-wait" role="status" hidden></p>
+          </section>
+
+          <section id="panel-code" hidden>
+            <form id="form-code" novalidate>
+              <label for="code" class="sr-only">Invitation code</label>
+              <input class="field code" id="code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX">
+              <button class="primary" type="submit">Enter</button>
+            </form>
+            <p class="error" id="err-code" role="alert" hidden>Enter your invitation code.</p>
+            <p class="note" id="note-code">Codes are single-use and tied to one account.</p>
+            <p class="done" id="done-code" role="status" hidden>Code accepted. Your first duel is waiting. <span class="qed">∎</span></p>
+          </section>
+        </div>
+      </div>
+
+      <img class="hero-mark" src="logos/erudent-mark.svg" alt="">
+    </div>
+  </main>
+
+  <footer>
+    <span>Mathematics arena · opening by invitation</span>
+    <span>© 2026 Erudent · Built by Omerta</span>
+  </footer>
+</div>
+
+<script>
+  // MOCK behaviour. Replace with real calls:
+  //   waitlist → POST /api/waitlist {email}
+  //   code     → POST /api/access-codes/redeem {code}
+  const $ = (id) => document.getElementById(id);
+  function tab(which) {
+    const wait = which === 'wait';
+    $('tab-wait').setAttribute('aria-pressed', String(wait));
+    $('tab-code').setAttribute('aria-pressed', String(!wait));
+    $('panel-wait').hidden = !wait;
+    $('panel-code').hidden = wait;
+  }
+  $('tab-wait').onclick = () => tab('wait');
+  $('tab-code').onclick = () => tab('code');
+
+  $('email').oninput = () => { $('err-wait').hidden = true; };
+  $('form-wait').onsubmit = (e) => {
+    e.preventDefault();
+    const v = $('email').value.trim();
+    if (!/^\S+@\S+\.\S+$/.test(v)) { $('err-wait').hidden = false; return; }
+    $('form-wait').hidden = true; $('note-wait').hidden = true;
+    const d = $('done-wait'); d.hidden = false;
+    d.textContent = "You're on the list. We'll send your code to " + v + '. ';
+    const q = document.createElement('span'); q.className = 'qed'; q.textContent = '∎'; d.appendChild(q);
+  };
+
+  $('code').oninput = (e) => { e.target.value = e.target.value.toUpperCase(); $('err-code').hidden = true; };
+  $('form-code').onsubmit = (e) => {
+    e.preventDefault();
+    if (!$('code').value.trim()) { $('err-code').hidden = false; return; }
+    $('form-code').hidden = true; $('note-code').hidden = true; $('done-code').hidden = false;
+  };
+</script>
+</body>
+</html>
