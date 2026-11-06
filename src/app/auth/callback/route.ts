@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { api } from "@/lib/erudent";
 
 /** Google sends players back here. Swap the code for a session, then route them on. */
 export async function GET(request: Request) {
@@ -15,8 +16,8 @@ export async function GET(request: Request) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) return NextResponse.redirect(`${origin}/login`);
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = await supabase.from("profiles").select("id").eq("id", user!.id).maybeSingle();
+  const profile = await api.myPlayer(supabase);
   if (!profile) return NextResponse.redirect(`${origin}/onboarding?next=${encodeURIComponent(next)}`);
+  if (profile.needs_rename) return NextResponse.redirect(`${origin}/onboarding/rename?next=${encodeURIComponent(next)}`);
   return NextResponse.redirect(`${origin}${next}`);
 }

@@ -4,62 +4,68 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { api, friendlyError } from "@/lib/erudent";
+import { usernameProblemFrom } from "@/lib/username";
+import UsernameField, {
+  errorClass,
+  fieldClass,
+  labelClass,
+  noteClass,
+  primaryButton,
+  safeNext,
+  useUsername,
+} from "@/components/UsernameField";
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const username = useUsername();
   const [birthDate, setBirthDate] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const valid = /^[a-z0-9_]{3,20}$/.test(username) && birthDate !== "";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      await api.createProfile(createClient(), username, birthDate);
-      const next = new URLSearchParams(window.location.search).get("next") ?? "/play";
-      router.replace(next.startsWith("/") && !next.startsWith("//") ? next : "/play");
+      await api.createProfile(createClient(), username.value.trim(), birthDate);
+      router.replace(safeNext());
     } catch (err) {
-      setError(friendlyError(err));
+      const problem = usernameProblemFrom(err instanceof Error ? err.message : null);
+      if (problem && problem !== "rate_limited") username.setProblem(problem);
+      else setError(friendlyError(err));
       setBusy(false);
     }
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-8 px-6">
-      <h1 className="font-serif text-4xl tracking-tight">Pick a username</h1>
-      <form onSubmit={submit} className="flex flex-col gap-5">
-        <label className="flex flex-col gap-2 text-sm">
-          Username
+    <main className="mx-auto flex min-h-screen w-full max-w-[440px] flex-col justify-center gap-8 px-4 py-12 font-ui text-ink">
+      <h1 className="text-[40px] leading-[1.05] font-extrabold tracking-[-0.03em]">Pick a username</h1>
+      <form onSubmit={submit} className="flex flex-col gap-6" noValidate>
+        <UsernameField state={username} autoFocus />
+        <div className="flex flex-col gap-2">
+          <label htmlFor="birth-date" className={labelClass}>
+            Birth date
+          </label>
           <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value.toLowerCase())}
-            maxLength={20}
-            autoFocus
-            className="border border-line bg-background px-3 py-2 text-base outline-none focus:border-foreground"
-            placeholder="e.g. euler_fan"
-          />
-          <span className="text-xs text-muted">3–20 characters. Letters, numbers, underscores.</span>
-        </label>
-        <label className="flex flex-col gap-2 text-sm">
-          Birth date
-          <input
+            id="birth-date"
             type="date"
+            className={fieldClass}
             value={birthDate}
             onChange={(e) => setBirthDate(e.target.value)}
-            className="border border-line bg-background px-3 py-2 text-base outline-none focus:border-foreground"
+            aria-describedby="birth-date-note"
           />
-          <span className="text-xs text-muted">Only used to check you&apos;re 13 or older. We don&apos;t save it.</span>
-        </label>
-        <button
-          disabled={!valid || busy}
-          className="border border-foreground bg-foreground px-4 py-3 text-background disabled:opacity-40"
-        >
+          <p id="birth-date-note" className={noteClass}>
+            Only used to check you&apos;re 13 or older. We don&apos;t save it.
+          </p>
+        </div>
+        <button className={primaryButton} disabled={!username.locallyValid || birthDate === "" || busy}>
           {busy ? "Saving…" : "Start playing"}
         </button>
-        {error && <p className="text-sm">{error}</p>}
+        {error && (
+          <p className={errorClass} role="alert">
+            {error}
+          </p>
+        )}
       </form>
     </main>
   );
