@@ -58,13 +58,23 @@ export async function rpc<T = unknown>(db: Db, uid: string, fn: string, args: un
   return rows[0].v;
 }
 
-/** Make a signed-in user with a profile. */
-export async function makeUser(db: Db, username: string, elo = 900, matchesPlayed = 0) {
+/** Make a signed-in user with a profile. They've redeemed an invitation code unless `access` is false. */
+export async function makeUser(db: Db, username: string, elo = 900, matchesPlayed = 0, access = true) {
   const id = randomUUID();
   await db.query(`insert into auth.users (id) values ($1)`, [id]);
   await rpc(db, id, "create_profile", [username, "2008-01-01"]);
+  if (access) await grantAccess(db, id);
   await db.query(`update profiles set elo = $2, matches_played = $3 where id = $1`, [id, elo, matchesPlayed]);
   return id;
+}
+
+/** Give a user a redeemed invitation code, as if they'd entered one. */
+export async function grantAccess(db: Db, uid: string) {
+  await db.query(
+    `insert into access_codes (code_hash, note, redeemed_by, redeemed_at)
+     values (encode(sha256(convert_to(gen_random_uuid()::text, 'UTF8')), 'hex'), 'test', $1, now())`,
+    [uid],
+  );
 }
 
 /** Seed `perTier` questions in every tier. Answer of question i in tier t is "t*100+i". */

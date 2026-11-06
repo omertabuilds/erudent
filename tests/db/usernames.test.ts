@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, test } from "vitest";
-import { asUser, createDb, makeUser, rpc, seedQuestions, type Db } from "./harness";
+import { asUser, createDb, grantAccess, makeUser, rpc, seedQuestions, type Db } from "./harness";
 import { localUsernameProblem, usernameKey } from "../../src/lib/username";
 
 let db: Db;
@@ -208,6 +208,8 @@ describe("forced rename", () => {
           await pg.query(`insert into profiles (id, username) values ($1, $2)`, [id, name]);
         }
         await pg.query(`insert into queue (user_id, elo) values ($1, 900), ($2, 900)`, [ids.xxx, ids.ggez]);
+        // Both have codes, so only the name decides who stays queued (see the access gate in has_access.test.ts).
+        for (const uid of [ids.xxx, ids.ggez]) await grantAccess(pg, uid);
       },
     });
     const res = await db.query<{ username: string; needs_rename: boolean }>(
