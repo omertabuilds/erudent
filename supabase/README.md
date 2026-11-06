@@ -32,7 +32,18 @@ functions (RPCs) in `migrations/20261105000000_core.sql`. Wrappers for each live
 | `my_active_match()` | signed in | Resume a match after closing the tab. |
 | `report_question` / `report_player` | players | Saved to `reports` for review. |
 | `get_leaderboard(limit)` | anyone | Players with 10+ matches, by Elo. |
-| `get_recent_matches(username)` | anyone | For profile pages. |
+| `get_profile(username)` | anyone | One profile, any case. For `/u/[username]`. |
+| `get_recent_matches(username)` | anyone | Last 10 finished duels, any case. For profile pages. |
+| `check_username(username)` | signed in | Null if allowed and free, else the reason (`username_taken`, `username_blocked`…). |
+| `rename_username(username)` | signed in | Only for flagged names. Elo and history stay. |
+| `my_player()` | signed in | Your own profile plus your private `needs_rename`. |
+
+**Usernames:** 3–20 of a–z A–Z 0–9 _ . -, starting with a letter or digit, never two
+symbols in a row. Shown as typed, unique ignoring case. Reserved names and the wordlist
+(`wordlists/`, checked after undoing leetspeak) are blocked; brand and staff names (erudent,
+admin, mod…) anywhere in a name. A trigger enforces this on every write. Names that broke the
+rules when they arrived are flagged in `private.username_flags`, which only the player can see
+(via `my_player()`), and can't play until renamed.
 
 **Rules:** questions A/B/C come from one tier below, at, and above the players'
 average Elo, worth 1/2/3 points. Ties go to the faster total time on correct answers.
