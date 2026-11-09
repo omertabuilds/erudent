@@ -75,6 +75,14 @@ Or paste the file into Supabase → SQL Editor → Run.
 `npm test` runs the whole game against an in-memory Postgres (PGlite). No Supabase
 account needed. Add a test in `tests/db/` for any rule you change.
 
+## Question pools
+
+Every question is in one pool. **ranked** questions are used by duels and recorded-run
+replays, and their answers are only shown after a match. **practice** questions are used
+by practice mode, which shows the answer right after each attempt. The two never mix, so
+practice can't leak ranked answers. New rows default to ranked. Practice questions live in
+the Notion **Practice Bank** (written for practice, or retired from ranked).
+
 ## Loading questions
 
 `npm run import-questions` copies every **Approved** question from the Notion Question

@@ -19,7 +19,7 @@ let db: Db;
 
 beforeEach(async () => {
   db = await createDb();
-  await seedQuestions(db);
+  await seedQuestions(db, 5, "practice");
 });
 
 const next = (uid: string, tier: number | null = null) => rpc<Served>(db, uid, "next_practice_question", [tier]);
@@ -62,6 +62,7 @@ describe("who can practice", () => {
   });
 
   test("not during a live duel, so practice can't reveal a question on the match screen", async () => {
+    await seedQuestions(db, 5, "ranked"); // duels need ranked questions
     const a = await makeUser(db, "alice");
     const b = await makeUser(db, "bob");
     expect(await rpc(db, a, "join_queue")).toBeNull();
