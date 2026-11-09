@@ -1,10 +1,14 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { api, friendlyError } from "@/lib/erudent";
 
 export type RedeemError = "invalid" | "limited" | "error";
+
+/** The header's "Enter code" fires this; the box with `anchorId` opens its code tab. */
+export const ENTER_CODE_EVENT = "erudent:enter-code";
+export const ENTER_CODE_ANCHOR = "enter-code";
 
 const BAD_CODE = "That code isn't valid or has been used.";
 const REDEEM_ERRORS: Record<RedeemError, string> = {
@@ -34,7 +38,16 @@ const errorText = "mt-[10px] text-[14px] font-semibold text-pencil";
 const done = "mt-5 text-[19px] leading-[29px]";
 
 /** Early-access entry: join the waitlist, or bring an invitation code. */
-export default function EarlyAccess({ redeemError, needsCode = false }: { redeemError: RedeemError | null; needsCode?: boolean }) {
+export default function EarlyAccess({
+  redeemError,
+  needsCode = false,
+  anchorId,
+}: {
+  redeemError: RedeemError | null;
+  needsCode?: boolean;
+  /** Set on one box per page: it gets this id and answers "Enter code". */
+  anchorId?: string;
+}) {
   // Unique per instance: the landing page renders this box twice.
   const id = useId();
   const [tab, setTab] = useState<"wait" | "code">(redeemError || needsCode ? "code" : "wait");
@@ -48,6 +61,20 @@ export default function EarlyAccess({ redeemError, needsCode = false }: { redeem
   const [codeError, setCodeError] = useState<string | null>(redeemError ? REDEEM_ERRORS[redeemError] : null);
   const [codeBusy, setCodeBusy] = useState(false);
   const [accepted, setAccepted] = useState(false);
+  const codeInput = useRef<HTMLInputElement>(null);
+
+  // "Enter code": switch to the code tab and focus the field (without a scroll jump;
+  // the anchor link does the scrolling). Also on arrival at /#enter-code.
+  useEffect(() => {
+    if (!anchorId) return;
+    const open = () => {
+      setTab("code");
+      requestAnimationFrame(() => codeInput.current?.focus({ preventScroll: true }));
+    };
+    if (window.location.hash === `#${anchorId}`) open();
+    window.addEventListener(ENTER_CODE_EVENT, open);
+    return () => window.removeEventListener(ENTER_CODE_EVENT, open);
+  }, [anchorId]);
 
   async function joinWaitlist(e: React.FormEvent) {
     e.preventDefault();
@@ -86,7 +113,7 @@ export default function EarlyAccess({ redeemError, needsCode = false }: { redeem
   }
 
   return (
-    <div className="mt-10 w-full max-w-[520px] text-left">
+    <div id={anchorId} className="mt-10 w-full max-w-[520px] scroll-mt-4 text-left">
       {needsCode && (
         <p className="mb-4 text-[17px] leading-[26px] font-semibold text-ink" role="status">
           You need an invite code to play. Enter it below or join the waitlist.
@@ -161,6 +188,7 @@ export default function EarlyAccess({ redeemError, needsCode = false }: { redeem
                 </label>
                 <input
                   id={`${id}-code`}
+                  ref={codeInput}
                   className={`${field} text-[20px] font-semibold tracking-[.12em] uppercase tabular-nums`}
                   type="text"
                   autoComplete="off"
