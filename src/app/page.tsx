@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import EarlyAccess, { type RedeemError } from "@/components/EarlyAccess";
+import EarlyAccess, { ENTER_CODE_ANCHOR, type RedeemError } from "@/components/EarlyAccess";
 import SiteHeader, { gutter } from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import Climb from "@/components/landing/Climb";
@@ -61,7 +61,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
               Same three problems. Five minutes. One opponent. Early access opens by invitation.
             </p>
 
-            <EarlyAccess redeemError={redeemError} needsCode={access === "required"} />
+            <EarlyAccess redeemError={redeemError} needsCode={access === "required"} anchorId={ENTER_CODE_ANCHOR} />
           </div>
         </section>
 
