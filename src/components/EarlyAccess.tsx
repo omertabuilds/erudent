@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { api, friendlyError } from "@/lib/erudent";
 
@@ -35,6 +35,8 @@ const done = "mt-5 text-[19px] leading-[29px]";
 
 /** Early-access entry: join the waitlist, or bring an invitation code. */
 export default function EarlyAccess({ redeemError, needsCode = false }: { redeemError: RedeemError | null; needsCode?: boolean }) {
+  // Unique per instance: the landing page renders this box twice.
+  const id = useId();
   const [tab, setTab] = useState<"wait" | "code">(redeemError || needsCode ? "code" : "wait");
 
   const [email, setEmail] = useState("");
@@ -113,11 +115,11 @@ export default function EarlyAccess({ redeemError, needsCode = false }: { redeem
           ) : (
             <>
               <form className="mt-4 flex flex-wrap gap-[10px]" onSubmit={joinWaitlist} noValidate>
-                <label htmlFor="email" className="sr-only">
+                <label htmlFor={`${id}-email`} className="sr-only">
                   Email address
                 </label>
                 <input
-                  id="email"
+                  id={`${id}-email`}
                   className={`${field} text-[18px] font-normal`}
                   type="email"
                   autoComplete="email"
@@ -128,18 +130,18 @@ export default function EarlyAccess({ redeemError, needsCode = false }: { redeem
                     setWaitError(null);
                   }}
                   aria-invalid={waitError ? true : undefined}
-                  aria-describedby={waitError ? "err-wait note-wait" : "note-wait"}
+                  aria-describedby={waitError ? `${id}-err-wait ${id}-note-wait` : `${id}-note-wait`}
                 />
                 <button className={primary} type="submit" disabled={waitBusy}>
                   Get a code
                 </button>
               </form>
               {waitError && (
-                <p id="err-wait" className={errorText} role="alert">
+                <p id={`${id}-err-wait`} className={errorText} role="alert">
                   {waitError}
                 </p>
               )}
-              <p id="note-wait" className={note}>
+              <p id={`${id}-note-wait`} className={note}>
                 One email when your code is ready. Nothing else.
               </p>
             </>
@@ -154,11 +156,11 @@ export default function EarlyAccess({ redeemError, needsCode = false }: { redeem
           ) : (
             <>
               <form className="mt-4 flex flex-wrap gap-[10px]" onSubmit={enterCode} noValidate>
-                <label htmlFor="code" className="sr-only">
+                <label htmlFor={`${id}-code`} className="sr-only">
                   Invitation code
                 </label>
                 <input
-                  id="code"
+                  id={`${id}-code`}
                   className={`${field} text-[20px] font-semibold tracking-[.12em] uppercase tabular-nums`}
                   type="text"
                   autoComplete="off"
@@ -172,18 +174,18 @@ export default function EarlyAccess({ redeemError, needsCode = false }: { redeem
                     setCodeError(null);
                   }}
                   aria-invalid={codeError ? true : undefined}
-                  aria-describedby={codeError ? "err-code note-code" : "note-code"}
+                  aria-describedby={codeError ? `${id}-err-code ${id}-note-code` : `${id}-note-code`}
                 />
                 <button className={primary} type="submit" disabled={codeBusy}>
                   Enter
                 </button>
               </form>
               {codeError && (
-                <p id="err-code" className={errorText} role="alert">
+                <p id={`${id}-err-code`} className={errorText} role="alert">
                   {codeError}
                 </p>
               )}
-              <p id="note-code" className={note}>
+              <p id={`${id}-note-code`} className={note}>
                 Codes are single-use and tied to one account.
               </p>
             </>
