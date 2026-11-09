@@ -46,3 +46,6 @@ next-env.d.ts
 # supabase local
 supabase/.branches
 supabase/.temp
+
+# question drafts (generated, never committed)
+/data/questions/
