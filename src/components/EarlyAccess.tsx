@@ -1,10 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { api, friendlyError } from "@/lib/erudent";
 
 export type RedeemError = "invalid" | "limited" | "error";
+
+/** The header's "Enter code" fires this; the box with `anchorId` opens its code tab. */
+export const ENTER_CODE_EVENT = "erudent:enter-code";
+export const ENTER_CODE_ANCHOR = "enter-code";
 
 const BAD_CODE = "That code isn't valid or has been used.";
 const REDEEM_ERRORS: Record<RedeemError, string> = {
@@ -24,17 +28,28 @@ function maskCode(v: string) {
 }
 
 const field =
-  "h-[60px] min-w-0 flex-[1_1_240px] rounded-none border border-rule bg-sunken px-[18px] font-ui leading-normal text-ink placeholder:text-ink-muted placeholder:opacity-100";
+  "h-[60px] min-w-0 flex-[1_1_240px] rounded-(--r-md) border border-rule bg-sunken px-[18px] font-ui leading-normal text-ink placeholder:text-ink-muted placeholder:opacity-100";
 const primary =
-  "h-[60px] flex-none cursor-pointer rounded-none bg-ink px-7 font-ui text-[17px] leading-normal font-bold text-on-ink shadow-[inset_0_-4px_0_var(--rule)] active:translate-y-[3px] active:shadow-[inset_0_-1px_0_var(--rule)] disabled:cursor-wait";
+  "h-[60px] flex-none cursor-pointer rounded-(--r-md) bg-ink max-sm:flex-auto px-7 font-ui text-[17px] leading-normal font-bold text-on-ink shadow-[inset_0_-4px_0_var(--rule)] active:translate-y-[3px] active:shadow-[inset_0_-1px_0_var(--rule)] disabled:cursor-wait";
 const tabButton =
-  "min-h-12 flex-1 basis-0 cursor-pointer rounded-none bg-transparent px-4 font-ui text-[15px] leading-none font-semibold text-ink aria-pressed:bg-ink aria-pressed:text-on-ink";
+  "min-h-11 flex-1 basis-0 cursor-pointer rounded-(--r-sm) bg-transparent px-4 font-ui text-[15px] leading-none font-semibold text-ink aria-pressed:bg-ink aria-pressed:text-on-ink";
 const note = "mt-3 text-[13px] leading-5 text-ink-muted";
 const errorText = "mt-[10px] text-[14px] font-semibold text-pencil";
 const done = "mt-5 text-[19px] leading-[29px]";
 
 /** Early-access entry: join the waitlist, or bring an invitation code. */
-export default function EarlyAccess({ redeemError, needsCode = false }: { redeemError: RedeemError | null; needsCode?: boolean }) {
+export default function EarlyAccess({
+  redeemError,
+  needsCode = false,
+  anchorId,
+}: {
+  redeemError: RedeemError | null;
+  needsCode?: boolean;
+  /** Set on one box per page: it gets this id and answers "Enter code". */
+  anchorId?: string;
+}) {
+  // Unique per instance: the landing page renders this box twice.
+  const id = useId();
   const [tab, setTab] = useState<"wait" | "code">(redeemError || needsCode ? "code" : "wait");
 
   const [email, setEmail] = useState("");
@@ -46,6 +61,20 @@ export default function EarlyAccess({ redeemError, needsCode = false }: { redeem
   const [codeError, setCodeError] = useState<string | null>(redeemError ? REDEEM_ERRORS[redeemError] : null);
   const [codeBusy, setCodeBusy] = useState(false);
   const [accepted, setAccepted] = useState(false);
+  const codeInput = useRef<HTMLInputElement>(null);
+
+  // "Enter code": switch to the code tab and focus the field (without a scroll jump;
+  // the anchor link does the scrolling). Also on arrival at /#enter-code.
+  useEffect(() => {
+    if (!anchorId) return;
+    const open = () => {
+      setTab("code");
+      requestAnimationFrame(() => codeInput.current?.focus({ preventScroll: true }));
+    };
+    if (window.location.hash === `#${anchorId}`) open();
+    window.addEventListener(ENTER_CODE_EVENT, open);
+    return () => window.removeEventListener(ENTER_CODE_EVENT, open);
+  }, [anchorId]);
 
   async function joinWaitlist(e: React.FormEvent) {
     e.preventDefault();
@@ -84,19 +113,19 @@ export default function EarlyAccess({ redeemError, needsCode = false }: { redeem
   }
 
   return (
-    <div className="mt-10 max-w-[520px]">
+    <div id={anchorId} className="mt-10 w-full max-w-[520px] scroll-mt-4 text-left">
       {needsCode && (
         <p className="mb-4 text-[17px] leading-[26px] font-semibold text-ink" role="status">
           You need an invite code to play. Enter it below or join the waitlist.
         </p>
       )}
-      <div className="flex border border-rule" role="group" aria-label="Choose how to get in">
+      <div className="flex gap-1 rounded-(--r-md) border border-rule p-1" role="group" aria-label="Choose how to get in">
         <button type="button" className={tabButton} aria-pressed={tab === "wait"} onClick={() => setTab("wait")}>
           Join the waitlist
         </button>
         <button
           type="button"
-          className={`${tabButton} border-l border-rule`}
+          className={tabButton}
           aria-pressed={tab === "code"}
           onClick={() => setTab("code")}
         >
@@ -113,11 +142,11 @@ export default function EarlyAccess({ redeemError, needsCode = false }: { redeem
           ) : (
             <>
               <form className="mt-4 flex flex-wrap gap-[10px]" onSubmit={joinWaitlist} noValidate>
-                <label htmlFor="email" className="sr-only">
+                <label htmlFor={`${id}-email`} className="sr-only">
                   Email address
                 </label>
                 <input
-                  id="email"
+                  id={`${id}-email`}
                   className={`${field} text-[18px] font-normal`}
                   type="email"
                   autoComplete="email"
@@ -128,18 +157,18 @@ export default function EarlyAccess({ redeemError, needsCode = false }: { redeem
                     setWaitError(null);
                   }}
                   aria-invalid={waitError ? true : undefined}
-                  aria-describedby={waitError ? "err-wait note-wait" : "note-wait"}
+                  aria-describedby={waitError ? `${id}-err-wait ${id}-note-wait` : `${id}-note-wait`}
                 />
                 <button className={primary} type="submit" disabled={waitBusy}>
                   Get a code
                 </button>
               </form>
               {waitError && (
-                <p id="err-wait" className={errorText} role="alert">
+                <p id={`${id}-err-wait`} className={errorText} role="alert">
                   {waitError}
                 </p>
               )}
-              <p id="note-wait" className={note}>
+              <p id={`${id}-note-wait`} className={note}>
                 One email when your code is ready. Nothing else.
               </p>
             </>
@@ -154,11 +183,12 @@ export default function EarlyAccess({ redeemError, needsCode = false }: { redeem
           ) : (
             <>
               <form className="mt-4 flex flex-wrap gap-[10px]" onSubmit={enterCode} noValidate>
-                <label htmlFor="code" className="sr-only">
+                <label htmlFor={`${id}-code`} className="sr-only">
                   Invitation code
                 </label>
                 <input
-                  id="code"
+                  id={`${id}-code`}
+                  ref={codeInput}
                   className={`${field} text-[20px] font-semibold tracking-[.12em] uppercase tabular-nums`}
                   type="text"
                   autoComplete="off"
@@ -172,18 +202,18 @@ export default function EarlyAccess({ redeemError, needsCode = false }: { redeem
                     setCodeError(null);
                   }}
                   aria-invalid={codeError ? true : undefined}
-                  aria-describedby={codeError ? "err-code note-code" : "note-code"}
+                  aria-describedby={codeError ? `${id}-err-code ${id}-note-code` : `${id}-note-code`}
                 />
                 <button className={primary} type="submit" disabled={codeBusy}>
                   Enter
                 </button>
               </form>
               {codeError && (
-                <p id="err-code" className={errorText} role="alert">
+                <p id={`${id}-err-code`} className={errorText} role="alert">
                   {codeError}
                 </p>
               )}
-              <p id="note-code" className={note}>
+              <p id={`${id}-note-code`} className={note}>
                 Codes are single-use and tied to one account.
               </p>
             </>
