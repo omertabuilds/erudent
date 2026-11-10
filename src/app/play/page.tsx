@@ -35,7 +35,7 @@ export default async function PlayPage() {
         <style>{`.reveal{opacity:1;transform:none}`}</style>
       </noscript>
 
-      <SiteHeaderView state="player" />
+      <SiteHeaderView state="player" current="play" />
 
       <main className={`mx-auto w-full max-w-[1312px] flex-[1_0_auto] pt-10 pb-24 md:pt-16 md:pb-32 ${gutter}`}>
         <h1 className="sr-only">Play</h1>
@@ -47,12 +47,14 @@ export default async function PlayPage() {
 
           <div className="flex min-w-0 flex-col gap-12 md:col-span-8 md:gap-16">
             <Lobby streak={stats?.streak ?? 0} />
-            <Reveal>
-              <Ledger stats={stats} />
-            </Reveal>
-            <Reveal>
-              <MasteryTree tier={tier} stats={stats} />
-            </Reveal>
+            <div className="grid gap-12 md:gap-16 lg:grid-cols-2 lg:gap-x-16">
+              <Reveal>
+                <Ledger stats={stats} />
+              </Reveal>
+              <Reveal>
+                <MasteryTree tier={tier} stats={stats} />
+              </Reveal>
+            </div>
           </div>
         </div>
       </main>
@@ -129,7 +131,7 @@ function Ledger({ stats }: { stats: PracticeStats | null }) {
       <h2 id="record-title" className={kicker}>
         Practice record
       </h2>
-      <dl className="mt-3 max-w-[440px] border-t border-hairline">
+      <dl className="mt-3 border-t border-hairline">
         {rows.map(([k, v]) => (
           <div key={k} className="flex items-baseline justify-between border-b border-hairline py-3">
             <dt className="text-ink-muted">{k}</dt>

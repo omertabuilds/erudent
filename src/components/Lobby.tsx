@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { api, friendlyError } from "@/lib/erudent";
-import { caption, cardTitle, kicker, panel, pill, quiet, secondary } from "@/components/ui";
+import { caption, kicker, panel, pill, quiet, secondary } from "@/components/ui";
 
 const POLL_MS = 2000;
 
@@ -136,15 +136,16 @@ export default function Lobby({ streak }: { streak: number }) {
       </section>
 
       <div className="flex flex-col gap-6">
-        <section aria-labelledby="ranked-title" className={panel}>
+        <section aria-labelledby="ranked-title" className="flex flex-col rounded-(--r-md) border border-hairline bg-surface p-5 md:p-6">
           <h2 id="ranked-title" className={kicker}>
             Ranked
           </h2>
-          <div aria-live="polite" className="mt-6">
+          {/* One min-height for both states so starting or cancelling a search doesn't move the page. */}
+          <div aria-live="polite" className="mt-4 flex min-h-[110px] flex-col justify-center sm:min-h-14">
             {searching ? (
               <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
                 <div className="flex min-w-0 flex-col gap-1">
-                  <p className={cardTitle}>
+                  <p className="text-[22px] leading-[28px] font-extrabold tracking-[-0.01em]">
                     Finding an opponent… <span className="tabular-nums">{waitedSec}s</span>
                   </p>
                   <p className={caption}>
@@ -156,7 +157,7 @@ export default function Lobby({ streak }: { streak: number }) {
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col items-start gap-3">
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-6">
                 <button
                   onClick={() => {
                     setError(null);
@@ -175,7 +176,7 @@ export default function Lobby({ streak }: { streak: number }) {
         <div className="grid gap-6 lg:grid-cols-2">
           <Link
             href="/practice"
-            className="flex flex-col rounded-(--r-md) border border-rule p-6 hover:border-ink md:p-8"
+            className={`${panel} hover:border-rule`}
           >
             <span className={kicker}>Practice</span>
             <span className="mt-6 text-[22px] leading-[28px] font-extrabold tracking-[-0.01em]">Endless. Unranked.</span>
