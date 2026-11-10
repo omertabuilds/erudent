@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { api, friendlyError, tierName, TIER_NAMES, type PracticeQuestion, type PracticeStats } from "@/lib/erudent";
+import { kicker, pill, quiet, secondary, sheet } from "@/components/ui";
 
 /**
  * What the server revealed after an answer or a skip. `yours` is null for a skip.
@@ -416,14 +417,3 @@ export default function PracticeRoom() {
     </div>
   );
 }
-
-const kicker = "text-[13px] leading-none font-semibold tracking-[0.08em] text-ink-muted uppercase";
-const sheet = "flex min-h-[420px] flex-col rounded-(--r-md) border border-hairline bg-surface p-6 md:p-8";
-const secondary =
-  "inline-flex h-11 items-center rounded-(--r-md) border border-rule px-5 text-[15px] font-bold text-ink hover:border-ink disabled:hover:border-rule";
-const quiet = "inline-flex min-h-11 items-center text-[15px] font-semibold text-ink-muted hover:text-ink";
-
-const pill = (selected: boolean) =>
-  `inline-flex h-11 items-center rounded-(--r-pill) border px-4 text-[15px] font-semibold disabled:opacity-40 ${
-    selected ? "border-ink bg-ink text-on-ink" : "border-rule text-ink hover:border-ink"
-  }`;

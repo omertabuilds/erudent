@@ -5,16 +5,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { api, friendlyError } from "@/lib/erudent";
+import { caption, cardTitle, kicker, panel, pill, quiet, secondary } from "@/components/ui";
 
 const POLL_MS = 2000;
 
-export default function Lobby() {
+const SUBJECTS = ["Math", "Coding", "Finance", "Law", "Med"] as const;
+
+export default function Lobby({ streak }: { streak: number }) {
   const router = useRouter();
   const sb = useRef(createClient()).current;
   const [searching, setSearching] = useState(false);
   const [waitedSec, setWaitedSec] = useState(0);
   const [friendCode, setFriendCode] = useState<{ match_id: string; code: string } | null>(null);
   const [joinCode, setJoinCode] = useState("");
+  const [copied, setCopied] = useState<"link" | "code" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // If you closed the tab mid-match, send you back in.
@@ -81,68 +85,151 @@ export default function Lobby() {
     }
   }
 
+  function copy(what: "link" | "code", text: string) {
+    navigator.clipboard.writeText(text).then(() => setCopied(what)).catch(() => {});
+  }
+
   const inviteLink = friendCode ? `${typeof window !== "undefined" ? window.location.origin : ""}/join/${friendCode.code}` : "";
 
   return (
-    <div className="flex flex-col gap-10">
-      <section className="flex flex-col gap-3">
-        <h2 className="text-xs uppercase tracking-widest text-muted">Practice</h2>
-        <Link href="/practice" className="border border-foreground px-4 py-3 text-center">Practice</Link>
-        <p className="text-xs text-muted">Unrated · no timer · endless</p>
+    <div className="flex flex-col gap-12 md:gap-16">
+      <section aria-labelledby="subject-title" className="flex flex-col gap-3">
+        <h2 id="subject-title" className={kicker}>
+          Subject
+        </h2>
+        <ul className="flex flex-wrap gap-x-2 gap-y-3">
+          {SUBJECTS.map((s) =>
+            s === "Math" ? (
+              <li key={s} className="flex flex-col gap-1">
+                <span aria-current="true" className={pill(true)}>
+                  {s}
+                </span>
+              </li>
+            ) : (
+              <li key={s} className="flex flex-col items-center gap-1">
+                <button
+                  type="button"
+                  aria-disabled="true"
+                  aria-describedby={`soon-${s}`}
+                  className="inline-flex h-11 cursor-default items-center rounded-(--r-pill) border border-hairline px-4 text-[15px] font-semibold text-ink-muted"
+                >
+                  {s}
+                </button>
+                <span id={`soon-${s}`} className={caption}>
+                  Soon
+                </span>
+              </li>
+            ),
+          )}
+        </ul>
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-xs uppercase tracking-widest text-muted">Ranked</h2>
-        {searching ? (
-          <div className="flex items-center justify-between border border-foreground p-5">
-            <div className="flex flex-col">
-              <span>Finding an opponent… {waitedSec}s</span>
-              <span className="text-xs text-muted">
-                {waitedSec < 15 ? "Looking near your rating" : waitedSec < 30 ? "Widening the search" : "Matching you with a recorded run"}
-              </span>
-            </div>
-            <button onClick={cancelSearch} className="text-sm underline">Cancel</button>
+      <div className="flex flex-col gap-6">
+        <section aria-labelledby="ranked-title" className={panel}>
+          <h2 id="ranked-title" className={kicker}>
+            Ranked
+          </h2>
+          <div aria-live="polite" className="mt-6">
+            {searching ? (
+              <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
+                <div className="flex min-w-0 flex-col gap-1">
+                  <p className={cardTitle}>
+                    Finding an opponent… <span className="tabular-nums">{waitedSec}s</span>
+                  </p>
+                  <p className={caption}>
+                    {waitedSec < 15 ? "Looking near your rating" : waitedSec < 30 ? "Widening the search" : "Matching you with a recorded run"}
+                  </p>
+                </div>
+                <button onClick={cancelSearch} className={secondary}>
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-start gap-3">
+                <button
+                  onClick={() => {
+                    setError(null);
+                    setSearching(true);
+                  }}
+                  className="inline-flex h-14 items-center rounded-(--r-md) bg-ink px-8 text-[17px] font-bold text-on-ink max-sm:w-full max-sm:justify-center"
+                >
+                  Play ranked
+                </button>
+                <p className={`${caption} tabular-nums`}>3 problems · 5 minutes · focus mode</p>
+              </div>
+            )}
           </div>
-        ) : (
-          <button
-            onClick={() => { setError(null); setSearching(true); }}
-            className="border border-foreground bg-foreground px-4 py-4 text-lg text-background"
+        </section>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Link
+            href="/practice"
+            className="flex flex-col rounded-(--r-md) border border-rule p-6 hover:border-ink md:p-8"
           >
-            Play ranked
-          </button>
-        )}
-        <p className="text-xs text-muted">3 questions · 5 minutes · focus mode on</p>
-      </section>
+            <span className={kicker}>Practice</span>
+            <span className="mt-6 text-[22px] leading-[28px] font-extrabold tracking-[-0.01em]">Endless. Unranked.</span>
+            <span className="mt-auto flex items-baseline justify-between gap-4 pt-6">
+              <span className="text-[15px] text-ink-muted">
+                Streak <span className="font-semibold text-ink tabular-nums">{streak}</span>
+              </span>
+              <span aria-hidden="true" className="font-semibold">
+                →
+              </span>
+            </span>
+          </Link>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-xs uppercase tracking-widest text-muted">Play a friend</h2>
-        {friendCode ? (
-          <div className="flex flex-col gap-3 border border-line p-5">
-            <span className="font-mono text-3xl tracking-[0.3em]">{friendCode.code}</span>
-            <div className="flex gap-3 text-sm">
-              <button onClick={() => navigator.clipboard.writeText(inviteLink)} className="underline">Copy link</button>
-              <button onClick={() => navigator.clipboard.writeText(friendCode.code)} className="underline">Copy code</button>
-            </div>
-            <span className="text-xs text-muted">Waiting for your friend… Friend games don&apos;t change your rating.</span>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <button onClick={createFriend} className="flex-1 border border-foreground px-4 py-3">Create a game</button>
-            <form onSubmit={joinFriend} className="flex flex-1 gap-2">
-              <input
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                maxLength={6}
-                placeholder="CODE"
-                className="w-full min-w-0 border border-line bg-background px-3 py-3 font-mono tracking-widest outline-none focus:border-foreground"
-              />
-              <button disabled={joinCode.length !== 6} className="border border-foreground px-4 disabled:opacity-40">Join</button>
-            </form>
-          </div>
-        )}
-      </section>
+          <section aria-labelledby="friend-title" className={panel}>
+            <h2 id="friend-title" className={kicker}>
+              Play a friend
+            </h2>
+            {friendCode ? (
+              <div className="mt-6 flex flex-col">
+                <p className="text-[13px] leading-[18px] font-semibold text-ink-muted">Your code</p>
+                <p className="mt-1 text-[44px] leading-[1] font-extrabold tracking-[0.12em] break-all tabular-nums">{friendCode.code}</p>
+                <div className="mt-3 flex flex-wrap gap-x-5">
+                  <button onClick={() => copy("link", inviteLink)} className={quiet}>
+                    {copied === "link" ? "Link copied" : "Copy link"}
+                  </button>
+                  <button onClick={() => copy("code", friendCode.code)} className={quiet}>
+                    {copied === "code" ? "Code copied" : "Copy code"}
+                  </button>
+                </div>
+                <p role="status" className={`${caption} mt-2`}>
+                  Waiting for your friend… Friend games don&apos;t change your rating.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-6 flex flex-col gap-4">
+                <button onClick={createFriend} className={`${secondary} justify-center`}>
+                  Create a game
+                </button>
+                <form onSubmit={joinFriend} className="flex gap-2">
+                  <input
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                    maxLength={6}
+                    placeholder="Code"
+                    aria-label="Friend's code"
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    className="h-11 w-full min-w-0 rounded-(--r-md) border border-hairline bg-sunken px-4 text-[17px] font-semibold tracking-[0.12em] text-ink uppercase tabular-nums placeholder:font-normal placeholder:tracking-normal placeholder:text-ink-muted placeholder:normal-case"
+                  />
+                  <button disabled={joinCode.length !== 6} className={`${secondary} flex-none disabled:opacity-40`}>
+                    Join
+                  </button>
+                </form>
+              </div>
+            )}
+          </section>
+        </div>
 
-      {error && <p className="text-sm">{error}</p>}
+        {error && (
+          <p role="alert" className="text-[15px] leading-[22px]">
+            {error}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
