@@ -24,7 +24,7 @@ Rebuild `landing-reference.html` in the app's real frontend stack as the site's 
 
 ## Non-negotiable design rules
 
-- No rounded corners. No shadows except the button's inset bottom edge. No gradients, glass, glow or emoji.
+- Radii from the tokens only (`r-md` controls and cards, `r-pill` chips). No shadows except the button's inset bottom edge and `shadow-float` on floating hero elements. No gradients, glass, glow or emoji.
 - Monochrome: `paper`, `ink`, `ink-muted`, `hairline`, `rule`. The only color is `pencil` — errors, ∎, small emphasis. Never a fill, never a button.
 - Primary button: `ink` background, `on-ink` text. One per screen.
 - Text contrast is already checked in the tokens; don't introduce new colors.
