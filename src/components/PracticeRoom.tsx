@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { api, friendlyError, tierName, TIER_NAMES, type PracticeQuestion, type PracticeStats } from "@/lib/erudent";
-import { kicker, pill, quiet, secondary, sheet } from "@/components/ui";
+import { kicker, quiet, secondary, sheet } from "@/components/ui";
 
 /**
  * What the server revealed after an answer or a skip. `yours` is null for a skip.
@@ -188,18 +188,23 @@ export default function PracticeRoom() {
 
   return (
     <div className="grid gap-12 md:grid-cols-12 md:gap-x-8 lg:gap-x-16">
-      <div className="flex min-w-0 flex-col gap-6 md:col-span-8">
+      <div className="flex min-w-0 flex-col gap-6 md:col-span-7">
         <section aria-label="Tier" className="flex flex-col gap-3">
-          <div className="flex flex-wrap gap-2">
-            <button onClick={() => pickTier(null)} disabled={busy || !setting} aria-pressed={!!setting?.auto} className={pill(!!setting?.auto)}>
-              Auto
-            </button>
-            {TIER_NAMES.map((name, i) => {
-              const selected = !!setting && !setting.auto && setting.tier === i + 1;
+          {/* A text row, not chips: the picked tier in ink 800, the rest ink-muted. */}
+          <div className="-ml-2 flex flex-wrap items-center">
+            {[null, ...TIER_NAMES.map((_, i) => i + 1)].map((t, i) => {
+              const selected = !!setting && (t === null ? setting.auto : !setting.auto && setting.tier === t);
               return (
-                <button key={name} onClick={() => pickTier(i + 1)} disabled={busy || !setting} aria-pressed={selected} className={pill(selected)}>
-                  {name}
-                </button>
+                <span key={t ?? "auto"} className="flex items-center">
+                  {i > 0 && (
+                    <span aria-hidden="true" className="text-ink-muted">
+                      ·
+                    </span>
+                  )}
+                  <button onClick={() => pickTier(t)} disabled={busy || !setting} aria-pressed={selected} className={tierLink(selected)}>
+                    {t === null ? "Auto" : tierName(t)}
+                  </button>
+                </span>
               );
             })}
           </div>
@@ -361,8 +366,8 @@ export default function PracticeRoom() {
         )}
       </div>
 
-      <aside aria-label="Your practice" className="flex flex-col md:col-span-4">
-        <p className={kicker}>Streak</p>
+      <aside aria-label="Your practice" className="flex flex-col md:col-span-4 md:col-start-9">
+        <p className={note}>Streak</p>
         <p className="mt-2 text-[80px] leading-[0.9] font-extrabold tracking-[-0.04em] tabular-nums">{stats?.streak ?? 0}</p>
 
         <dl className="mt-8 border-t border-hairline">
@@ -378,7 +383,7 @@ export default function PracticeRoom() {
           ))}
         </dl>
 
-        <p className={`${kicker} mt-10`}>By tier</p>
+        <p className={`${note} mt-10`}>By tier</p>
         {byTier.length ? (
           <table className="mt-3 w-full border-collapse text-left tabular-nums">
             <thead>
@@ -417,3 +422,11 @@ export default function PracticeRoom() {
     </div>
   );
 }
+
+/** Sentence-case margin label. The page keeps its kickers to "Practice" and "Proof". */
+const note = "text-[13px] leading-[18px] font-semibold text-ink-muted";
+
+const tierLink = (selected: boolean) =>
+  `inline-flex min-h-11 items-center px-2 text-[15px] disabled:opacity-40 ${
+    selected ? "font-extrabold text-ink" : "font-semibold text-ink-muted hover:text-ink"
+  }`;

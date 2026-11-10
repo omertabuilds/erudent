@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requirePlayer } from "@/lib/session";
-import { api, TIER_NAMES, type MyPlayer, type PracticeStats } from "@/lib/erudent";
+import { api, TIER_NAMES, type MyPlayer, type PracticeStats, type RecentMatch } from "@/lib/erudent";
 import { SiteHeaderView, gutter } from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import Avatar from "@/components/Avatar";
 import Lobby from "@/components/Lobby";
 import Reveal from "@/components/landing/Reveal";
-import { caption, cardTitle, kicker, panel, secondary } from "@/components/ui";
+import { caption } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -18,16 +18,35 @@ export const metadata: Metadata = {
 const PLACEMENT = 10;
 
 const pct = (n: number, of: number) => (of ? `${Math.round((100 * n) / of)}%` : "—");
+const num = (n: number) => n.toLocaleString("en-US");
+
+/** Sentence-case label for a margin note. Not a kicker: the page keeps one of those. */
+const note = "text-[13px] leading-[18px] font-semibold text-ink-muted";
 
 export default async function PlayPage() {
   const { supabase, profile } = await requirePlayer("/play");
-  const [{ data: rank }, stats] = await Promise.all([
+  const [{ data: rank }, stats, recent] = await Promise.all([
     supabase.rpc("rank_name", { p_elo: profile.elo, p_matches: profile.matches_played }),
     api.practiceStats(supabase).catch(() => null),
+    api.recentMatches(supabase, profile.username).catch(() => [] as RecentMatch[]),
   ]);
   const rankName = (rank as string | null) ?? "Unranked";
   // 1–6 once placed; 0 while placement hides the rank ("Unranked").
   const tier = TIER_NAMES.indexOf(rankName as (typeof TIER_NAMES)[number]) + 1;
+  const placementLeft = Math.max(0, PLACEMENT - profile.matches_played);
+  const lastDuel = recent.find((m) => m.result !== null) ?? null;
+
+  // "N to next rank" is left out: the Elo cut-offs live only in the database (tier_for_elo).
+  const standing =
+    placementLeft > 0 ? (
+      <>
+        <span className="font-semibold text-ink">Unranked.</span> {placementLeft} placement {placementLeft === 1 ? "duel" : "duels"} left.
+      </>
+    ) : (
+      <>
+        <span className="font-semibold text-ink">{rankName}.</span> {num(profile.elo)} Elo.
+      </>
+    );
 
   return (
     <div className="flex min-h-screen flex-col bg-paper font-ui text-[17px] leading-[26px] text-ink">
@@ -38,24 +57,20 @@ export default async function PlayPage() {
       <SiteHeaderView state="player" current="play" />
 
       <main className={`mx-auto w-full max-w-[1312px] flex-[1_0_auto] pt-10 pb-24 md:pt-16 md:pb-32 ${gutter}`}>
-        <h1 className="sr-only">Play</h1>
-
-        <div className="grid gap-12 md:grid-cols-12 md:gap-x-8 lg:gap-x-16">
-          <div className="md:col-span-4">
-            <PlayerCard profile={profile} rank={rankName} />
+        <div className="grid gap-16 md:grid-cols-12 md:gap-x-8 lg:gap-x-16">
+          <div className="min-w-0 md:col-span-7">
+            <Lobby streak={stats?.streak ?? 0} standing={standing} />
+            <Reveal className="mt-16 md:mt-24">
+              <Ranks tier={tier} stats={stats} />
+            </Reveal>
           </div>
 
-          <div className="flex min-w-0 flex-col gap-12 md:col-span-8 md:gap-16">
-            <Lobby streak={stats?.streak ?? 0} />
-            <div className="grid gap-12 md:gap-16 lg:grid-cols-2 lg:gap-x-16">
-              <Reveal>
-                <Ledger stats={stats} />
-              </Reveal>
-              <Reveal>
-                <MasteryTree tier={tier} stats={stats} />
-              </Reveal>
-            </div>
-          </div>
+          <aside aria-label="Your record" className="flex min-w-0 flex-col gap-10 md:col-span-4 md:col-start-9 md:pt-2">
+            <Player profile={profile} />
+            {lastDuel && <LastDuel m={lastDuel} />}
+            <PracticeRecord stats={stats} />
+            <p className={`${caption} border-t border-hairline pt-4`}>Math. More subjects later.</p>
+          </aside>
         </div>
       </main>
 
@@ -64,142 +79,130 @@ export default async function PlayPage() {
   );
 }
 
-function PlayerCard({ profile, rank }: { profile: MyPlayer; rank: string }) {
-  const placementLeft = Math.max(0, PLACEMENT - profile.matches_played);
-
+function Player({ profile }: { profile: MyPlayer }) {
   return (
-    <section aria-label="Your profile" className={`${panel} lg:sticky lg:top-8`}>
-      {/* Phone: avatar beside the name. md+: a vertical column. */}
-      <div className="flex items-center gap-4 md:flex-col md:items-start md:gap-6">
-        <span className="md:hidden">
-          <Avatar username={profile.username} size={56} />
-        </span>
-        <span className="hidden md:inline-flex">
-          <Avatar username={profile.username} size={96} />
-        </span>
-        <div className="min-w-0">
-          <p className={`${cardTitle} break-all`}>@{profile.username}</p>
-          <p className="mt-1 font-semibold">{rank}</p>
-        </div>
-      </div>
-
-      <div className="mt-6 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 md:mt-8 md:flex-col md:items-start">
-        {placementLeft > 0 ? (
-          <p className="text-[22px] leading-[28px] font-extrabold tracking-[-0.01em] tabular-nums">
-            {placementLeft} placement {placementLeft === 1 ? "duel" : "duels"} left
-          </p>
-        ) : (
-          <p className="flex items-baseline gap-2">
-            <span className="text-[56px] leading-[1] font-extrabold tracking-[-0.03em] tabular-nums">{profile.elo}</span>
-            <span className="text-[15px] font-semibold text-ink-muted">Elo</span>
-          </p>
-        )}
-        <p className="font-semibold tabular-nums" aria-label={`${profile.wins} wins, ${profile.losses} losses, ${profile.draws} draws`}>
-          {profile.wins}W · {profile.losses}L · {profile.draws}D
+    <div className="flex items-center gap-3">
+      <Avatar username={profile.username} size={40} />
+      <div className="min-w-0">
+        <Link
+          href={`/u/${encodeURIComponent(profile.username)}`}
+          className="-my-2 inline-flex min-h-11 max-w-full items-center py-2 font-extrabold break-all underline-offset-4 hover:underline"
+        >
+          @{profile.username}
+        </Link>
+        <p className="text-[15px] leading-[22px] text-ink-muted tabular-nums">
+          <span aria-hidden="true">
+            {profile.wins}W · {profile.losses}L · {profile.draws}D
+          </span>
+          <span className="sr-only">
+            {profile.wins} wins, {profile.losses} losses, {profile.draws} draws
+          </span>
         </p>
       </div>
-
-      <dl className="mt-6 border-t border-hairline max-md:hidden">
-        {[
-          ["Matches played", `${profile.matches_played}`],
-          ["Win rate", pct(profile.wins, profile.matches_played)],
-        ].map(([k, v]) => (
-          <div key={k} className="flex items-baseline justify-between border-b border-hairline py-3">
-            <dt className="text-ink-muted">{k}</dt>
-            <dd className="font-semibold tabular-nums">{v}</dd>
-          </div>
-        ))}
-      </dl>
-
-      <Link href={`/u/${encodeURIComponent(profile.username)}`} className={`${secondary} mt-6 justify-center md:self-start`}>
-        View profile
-      </Link>
-    </section>
+    </div>
   );
 }
 
-function Ledger({ stats }: { stats: PracticeStats | null }) {
+const WORD = { win: "Victory", loss: "Defeat", draw: "Draw" } as const;
+const day = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+
+/** Stated, not celebrated: "Victory, 4–2. +18 ∎" · "Defeat, 1–3. −12". */
+function LastDuel({ m }: { m: RecentMatch }) {
+  const d = m.elo_after === null ? null : m.elo_after - m.elo_before;
+  return (
+    <div className="border-t border-hairline pt-4">
+      <p className={note}>Last duel</p>
+      <p className="mt-2 font-semibold tabular-nums">
+        {WORD[m.result!]}
+        {m.opponent_score !== null && `, ${m.score}–${m.opponent_score}`}.{" "}
+        {m.mode === "friend" ? (
+          <span className="font-normal text-ink-muted">Unrated.</span>
+        ) : d === null ? null : d > 0 ? (
+          <span className="text-pencil">
+            +{d}
+            <span className="sr-only"> Elo</span> ∎
+          </span>
+        ) : (
+          <span className="text-ink-muted">
+            {d < 0 ? `−${-d}` : "±0"}
+            <span className="sr-only"> Elo</span>
+          </span>
+        )}
+      </p>
+      <p className={caption}>
+        {m.opponent ? `Against @${m.opponent} · ` : ""}
+        <time dateTime={m.finished_at}>{day.format(new Date(m.finished_at))}</time>
+      </p>
+    </div>
+  );
+}
+
+function PracticeRecord({ stats }: { stats: PracticeStats | null }) {
   const attempted = stats?.attempted ?? 0;
   const rows: [string, string][] = [
-    ["Attempted", `${attempted}`],
+    ["Attempted", num(attempted)],
     ["Accuracy", pct(stats?.correct ?? 0, attempted)],
-    ["Best streak", `${stats?.best_streak ?? 0}`],
+    ["Best streak", num(stats?.best_streak ?? 0)],
   ];
-
   return (
-    <section aria-labelledby="record-title">
-      <h2 id="record-title" className={kicker}>
-        Practice record
-      </h2>
-      <dl className="mt-3 border-t border-hairline">
+    <div className="border-t border-hairline pt-4">
+      <p className={note}>Practice record</p>
+      <dl className="mt-2">
         {rows.map(([k, v]) => (
-          <div key={k} className="flex items-baseline justify-between border-b border-hairline py-3">
-            <dt className="text-ink-muted">{k}</dt>
-            <dd className="font-semibold tabular-nums">{v}</dd>
+          <div key={k} className="flex items-baseline justify-between border-b border-hairline py-2 last:border-b-0">
+            <dt className="text-[15px] text-ink-muted">{k}</dt>
+            <dd className="text-[15px] font-semibold tabular-nums">{v}</dd>
           </div>
         ))}
       </dl>
-    </section>
+    </div>
   );
 }
 
 /**
- * The six ranks as a chain, Novice at the foot and Erudite at the head, joined by construction lines.
- * Your rank is inked in; ranks below it are reached; ranks above are hairline.
- * Each node carries your practice accuracy at that tier.
+ * The six ranks on one thin vertical rule, Erudite at the head, one tick each.
+ * Your rank in ink 800; the rest ink-muted. Each carries your practice accuracy at that tier.
  */
-function MasteryTree({ tier, stats }: { tier: number; stats: PracticeStats | null }) {
-  // TODO: per-topic mastery (a node per topic within each tier) needs a per-topic stats RPC.
+function Ranks({ tier, stats }: { tier: number; stats: PracticeStats | null }) {
+  // TODO: per-topic mastery (a tick per topic within each rank) needs a per-topic stats RPC.
   const byTier = new Map((stats?.by_tier ?? []).map((t) => [t.tier, t]));
 
   return (
-    <section aria-labelledby="mastery-title">
-      <h2 id="mastery-title" className={kicker}>
-        Mastery
+    <section aria-labelledby="ranks-title" className="border-t border-hairline pt-6">
+      <h2 id="ranks-title" className="font-semibold">
+        The ranks
       </h2>
 
       {/* DOM order climbs from Novice; flex-col-reverse draws Erudite on top. */}
-      <ol className="mt-6 flex max-w-[440px] flex-col-reverse">
+      <ol className="mt-6 ml-1 flex max-w-[360px] flex-col-reverse border-l border-rule">
         {TIER_NAMES.map((name, i) => {
           const n = i + 1;
-          const state = n === tier ? "current" : n < tier ? "reached" : "unreached";
+          const current = n === tier;
           const t = byTier.get(n);
           return (
-            <li key={name} className="flex flex-col-reverse">
-              {n > 1 && <span aria-hidden="true" className="ml-8 block h-6 w-px bg-hairline" />}
-              <div
-                className={`flex min-h-14 items-center justify-between gap-4 rounded-(--r-md) border px-5 ${
-                  state === "current"
-                    ? "border-ink bg-ink text-on-ink"
-                    : state === "reached"
-                      ? "border-ink text-ink"
-                      : "border-hairline text-ink-muted"
-                }`}
-              >
-                <span className="font-semibold">
-                  {name}
-                  {n === TIER_NAMES.length && tier >= n && (
-                    <span className="ml-2 text-pencil" aria-hidden="true">
-                      ∎
-                    </span>
-                  )}
-                  <span className="sr-only">
-                    {state === "current" ? " (your rank)" : state === "reached" ? " (reached)" : " (not reached)"}
+            <li key={name} className="relative flex items-baseline justify-between gap-6 py-2.5 pl-7">
+              <span aria-hidden="true" className={`absolute top-1/2 left-0 h-px ${current ? "w-5 bg-ink" : "w-3 bg-rule"}`} />
+              <span className={current ? "font-extrabold text-ink" : "text-ink-muted"}>
+                {name}
+                {n === TIER_NAMES.length && tier >= n && (
+                  <span className="ml-2 text-pencil" aria-hidden="true">
+                    ∎
                   </span>
-                </span>
-                <span className="text-[15px] tabular-nums">
-                  <span className="sr-only">Practice accuracy </span>
-                  {t?.attempted ? pct(t.correct, t.attempted) : "—"}
-                </span>
-              </div>
+                )}
+                {current && <span className="sr-only"> (your rank)</span>}
+              </span>
+              <span className="text-[15px] text-ink-muted tabular-nums">
+                <span className="sr-only">Practice accuracy </span>
+                {t?.attempted ? pct(t.correct, t.attempted) : "—"}
+              </span>
             </li>
           );
         })}
       </ol>
 
-      <p className={`${caption} mt-4`}>
-        {tier === 0 ? "Your rank is placed after ten ranked duels. " : ""}
-        Practice accuracy per rank. Per-topic mastery is coming.
+      <p className={`${caption} mt-4 max-w-[360px]`}>
+        {tier === 0 ? "Your rank is set after ten ranked duels. " : ""}
+        Practice accuracy at each rank. Per-topic mastery is coming.
       </p>
     </section>
   );
