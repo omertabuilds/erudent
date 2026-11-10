@@ -83,7 +83,7 @@ export default function ProfileBanner({ player, rank, editable = false }: { play
     setUploading(true);
     setPictureError(null);
     try {
-      setPicture(await uploadAvatar(sb, player.id, file, picture.path));
+      setPicture(await uploadAvatar(sb, player.id, file));
       router.refresh();
     } catch (err) {
       setPictureError(friendlyError(err));
@@ -96,7 +96,7 @@ export default function ProfileBanner({ player, rank, editable = false }: { play
     setUploading(true);
     setPictureError(null);
     try {
-      await removeAvatar(sb, picture.path);
+      await removeAvatar(sb, player.id);
       setPicture({ path: null, url: null });
       router.refresh();
     } catch (err) {
