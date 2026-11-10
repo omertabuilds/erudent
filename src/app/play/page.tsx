@@ -48,7 +48,7 @@ export default async function PlayPage() {
           <div className="flex min-w-0 flex-col gap-12 md:col-span-8 md:gap-16">
             <Lobby streak={stats?.streak ?? 0} />
             <Reveal>
-              <Ledger profile={profile} stats={stats} />
+              <Ledger stats={stats} />
             </Reveal>
             <Reveal>
               <MasteryTree tier={tier} stats={stats} />
@@ -116,48 +116,27 @@ function PlayerCard({ profile, rank }: { profile: MyPlayer; rank: string }) {
   );
 }
 
-function Ledger({ profile, stats }: { profile: MyPlayer; stats: PracticeStats | null }) {
-  const placed = profile.matches_played >= PLACEMENT;
+function Ledger({ stats }: { stats: PracticeStats | null }) {
   const attempted = stats?.attempted ?? 0;
-  const groups: [string, [string, string][]][] = [
-    [
-      "Ranked",
-      [
-        ["Elo", placed ? `${profile.elo}` : "Placement"],
-        ["W / L / D", `${profile.wins} / ${profile.losses} / ${profile.draws}`],
-        ["Win rate", pct(profile.wins, profile.matches_played)],
-      ],
-    ],
-    [
-      "Practice",
-      [
-        ["Attempted", `${attempted}`],
-        ["Accuracy", pct(stats?.correct ?? 0, attempted)],
-        ["Best streak", `${stats?.best_streak ?? 0}`],
-      ],
-    ],
+  const rows: [string, string][] = [
+    ["Attempted", `${attempted}`],
+    ["Accuracy", pct(stats?.correct ?? 0, attempted)],
+    ["Best streak", `${stats?.best_streak ?? 0}`],
   ];
 
   return (
     <section aria-labelledby="record-title">
       <h2 id="record-title" className={kicker}>
-        Record
+        Practice record
       </h2>
-      <div className="mt-3 grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:gap-x-16">
-        {groups.map(([title, rows]) => (
-          <div key={title}>
-            <h3 className="border-b border-hairline pb-2 text-[13px] leading-[18px] text-ink-muted">{title}</h3>
-            <dl>
-              {rows.map(([k, v]) => (
-                <div key={k} className="flex items-baseline justify-between border-b border-hairline py-3">
-                  <dt className="text-ink-muted">{k}</dt>
-                  <dd className="font-semibold tabular-nums">{v}</dd>
-                </div>
-              ))}
-            </dl>
+      <dl className="mt-3 max-w-[440px] border-t border-hairline">
+        {rows.map(([k, v]) => (
+          <div key={k} className="flex items-baseline justify-between border-b border-hairline py-3">
+            <dt className="text-ink-muted">{k}</dt>
+            <dd className="font-semibold tabular-nums">{v}</dd>
           </div>
         ))}
-      </div>
+      </dl>
     </section>
   );
 }
