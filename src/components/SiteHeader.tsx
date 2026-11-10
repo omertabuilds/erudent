@@ -30,7 +30,8 @@ export default async function SiteHeader() {
   return <SiteHeaderView state={!user ? "signed-out" : access ? "player" : "no-access"} />;
 }
 
-export function SiteHeaderView({ state }: { state: HeaderState }) {
+/** `current` marks the page you're on: its link drops the button look and gets aria-current. */
+export function SiteHeaderView({ state, current }: { state: HeaderState; current?: "play" }) {
   return (
     <header className={`relative z-10 flex items-center justify-between gap-3 py-5 ${gutter}`}>
       <Link href="/" className="flex flex-none items-center gap-3">
@@ -45,18 +46,23 @@ export function SiteHeaderView({ state }: { state: HeaderState }) {
           How it works
         </a>
         <Link href="/rules" className={`${link} ${state === "no-access" ? "max-sm:hidden" : ""}`}>
-  Rules
-</Link>
+          Rules
+        </Link>
         {state === "signed-out" && (
           <Link href="/login?next=/play" className={action}>
             Sign in
           </Link>
         )}
-        {state === "player" && (
-          <Link href="/play" className={action}>
-            Play
-          </Link>
-        )}
+        {state === "player" &&
+          (current === "play" ? (
+            <Link href="/play" aria-current="page" className={`${link} aria-[current=page]:text-ink`}>
+              Play
+            </Link>
+          ) : (
+            <Link href="/play" className={action}>
+              Play
+            </Link>
+          ))}
         {state === "no-access" && (
           <>
             <EnterCodeLink className={action} />
