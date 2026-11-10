@@ -308,14 +308,14 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
             {mine ? (
               <p className="text-[19px] leading-[29px] font-semibold">
                 {mine.answer === null ? (
-                  <span className="text-ink-muted">✗ Forfeited.</span>
+                  <span className="text-ink-muted"><span className="mr-2">✗</span>Forfeited.</span>
                 ) : mine.correct ? (
                   <>
-                    <span className="text-pencil">✓</span> You answered <span className="tabular-nums">{mine.answer}</span>. Correct.
+                    <span className="mr-2 text-pencil">✓</span>You answered <span className="tabular-nums">{mine.answer}</span>. Correct.
                   </>
                 ) : (
                   <span className="text-ink-muted">
-                    ✗ You answered <span className="tabular-nums">{mine.answer}</span>. Wrong.
+                    <span className="mr-2">✗</span>You answered <span className="tabular-nums">{mine.answer}</span>. Wrong.
                   </span>
                 )}
               </p>
@@ -441,29 +441,25 @@ function Glyph({ mark, you }: { mark: Mark; you: boolean }) {
 
 const markWord = (m: Mark) => (m === "solved" ? "solved" : m === "missed" ? "missed" : "open");
 
-/** A · B · C as hairline cells: the glyph once decided, the letter while open. */
+/** A · B · C as hairline cells: the letter, then ✓ or ✗ once decided. */
 function Marks({ side, flip }: { side: Side; flip?: boolean }) {
   return (
     <ul aria-label="Problems" className={`flex gap-2 ${flip ? "justify-end" : ""}`}>
       {SLOTS.map((s) => {
         const m = side.marks[s];
         return (
-          <li key={s} className="flex flex-col items-center gap-1">
-            <span
-              aria-hidden="true"
-              className={`flex size-10 items-center justify-center rounded-(--r-sm) border text-[17px] ${
-                m === "solved"
-                  ? `border-rule font-extrabold ${side.you ? "text-pencil" : "text-ink"}`
-                  : m === "missed"
-                    ? "border-hairline text-ink-muted"
-                    : "border-hairline font-semibold text-ink-muted"
-              }`}
-            >
-              {m === "solved" ? "✓" : m === "missed" ? "✗" : s}
-            </span>
-            <span aria-hidden="true" className="text-[13px] leading-none text-ink-muted">
-              {m ? s : " "}
-            </span>
+          <li
+            key={s}
+            className={`flex h-10 min-w-10 items-center justify-center gap-1.5 rounded-(--r-sm) border px-2.5 text-[15px] ${
+              m === "solved" ? "border-rule font-semibold text-ink" : "border-hairline text-ink-muted"
+            }`}
+          >
+            <span aria-hidden="true">{s}</span>
+            {m && (
+              <span aria-hidden="true" className={m === "solved" ? `font-extrabold ${side.you ? "text-pencil" : "text-ink"}` : ""}>
+                {m === "solved" ? "✓" : "✗"}
+              </span>
+            )}
             <span className="sr-only">
               {s} {markWord(m)}
             </span>
