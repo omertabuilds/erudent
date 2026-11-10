@@ -9,6 +9,12 @@
   --on-ink: #0f0f0e;
   --ink-muted: #a3a19a;
   --pencil: #ec5a3f;
+  --rank-1: #9aa8b8;
+  --rank-2: #4fbfb0;
+  --rank-3: #7fa8f0;
+  --rank-4: #b39af2;
+  --rank-5: #8fbf7a;
+  --rank-6: #d9b45a;
   --focus: var(--ink);
   --shadow-float: 0 1px 2px rgb(0 0 0 / 0.2), 0 18px 40px -18px rgb(0 0 0 / 0.55);
 }
@@ -22,6 +28,12 @@
   --on-ink: #f4f3ef;
   --ink-muted: #5c5a53;
   --pencil: #b8311b;
+  --rank-1: #4f5e6e;
+  --rank-2: #12756a;
+  --rank-3: #2f5fc4;
+  --rank-4: #6c4bc2;
+  --rank-5: #43702f;
+  --rank-6: #83600f;
   --focus: var(--ink);
   --shadow-float: 0 1px 2px rgb(20 20 19 / 0.05), 0 18px 40px -18px rgb(20 20 19 / 0.16);
 }
