@@ -10,6 +10,7 @@
   --ink-muted: #a3a19a;
   --pencil: #ec5a3f;
   --focus: var(--ink);
+  --shadow-float: 0 1px 2px rgb(0 0 0 / 0.2), 0 18px 40px -18px rgb(0 0 0 / 0.55);
 }
 [data-theme="light"] {
   --paper: #f4f3ef;
@@ -22,6 +23,7 @@
   --ink-muted: #5c5a53;
   --pencil: #b8311b;
   --focus: var(--ink);
+  --shadow-float: 0 1px 2px rgb(20 20 19 / 0.05), 0 18px 40px -18px rgb(20 20 19 / 0.16);
 }
 :root {
   --space-1: 4px;
@@ -34,6 +36,9 @@
   --space-32: 128px;
   --radius-none: 0px;
   --radius-full: 9999px;
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-pill: 999px;
   --font-display: "Bodoni Moda", Didot, "Bodoni 72", Georgia, serif;
   --font-serif: "Source Serif 4", "Source Serif Pro", Georgia, serif;
   --font-sans: "Source Sans 3", "Source Sans Pro", "Helvetica Neue", Arial, sans-serif;
