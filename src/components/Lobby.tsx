@@ -20,6 +20,11 @@ export default function Lobby({ streak }: { streak: number }) {
   const [joinCode, setJoinCode] = useState("");
   const [copied, setCopied] = useState<"link" | "code" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+  }, []);
 
   // If you closed the tab mid-match, send you back in.
   useEffect(() => {
@@ -86,7 +91,14 @@ export default function Lobby({ streak }: { streak: number }) {
   }
 
   function copy(what: "link" | "code", text: string) {
-    navigator.clipboard.writeText(text).then(() => setCopied(what)).catch(() => {});
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        if (copiedTimer.current) clearTimeout(copiedTimer.current);
+        setCopied(what);
+        copiedTimer.current = setTimeout(() => setCopied(null), 2000);
+      })
+      .catch(() => {});
   }
 
   const inviteLink = friendCode ? `${typeof window !== "undefined" ? window.location.origin : ""}/join/${friendCode.code}` : "";
@@ -107,14 +119,13 @@ export default function Lobby({ streak }: { streak: number }) {
               </li>
             ) : (
               <li key={s} className="flex flex-col items-center gap-1">
-                <button
-                  type="button"
+                <span
                   aria-disabled="true"
                   aria-describedby={`soon-${s}`}
                   className="inline-flex h-11 cursor-default items-center rounded-(--r-pill) border border-hairline px-4 text-[15px] font-semibold text-ink-muted"
                 >
                   {s}
-                </button>
+                </span>
                 <span id={`soon-${s}`} className={caption}>
                   Soon
                 </span>
