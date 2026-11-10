@@ -103,6 +103,35 @@ export type RecentMatch = {
   opponent_score: number | null;
 };
 
+/** Question tiers 1–6, named like the ranks (rank_name in the database). */
+export const TIER_NAMES = ["Novice", "Apprentice", "Scholar", "Savant", "Sage", "Erudite"] as const;
+export const tierName = (tier: number) => TIER_NAMES[tier - 1] ?? `Tier ${tier}`;
+
+/** A practice question. Never has the answer: that comes back only after you answer or skip. */
+export type PracticeQuestion = {
+  question_id: string;
+  tier: number;
+  topic: string;
+  prompt: string;
+  auto: boolean; // auto tier on?
+  selected_tier: number; // tier the next question comes from (can differ from `tier` right after a switch)
+};
+
+export type PracticeResult =
+  | { status: "invalid_format" } // not an integer or fraction: the question isn't used up
+  | { status: "no_question" }
+  | { status: "ok"; correct: boolean; answer: string; solution: string; streak: number; tier: number };
+
+export type PracticeStats = {
+  attempted: number; // skips count as attempted
+  correct: number;
+  streak: number;
+  best_streak: number;
+  auto: boolean;
+  tier: number | null; // null until you've practiced once
+  by_tier: { tier: number; attempted: number; correct: number }[];
+};
+
 async function call<T>(sb: SupabaseClient, fn: string, args?: Record<string, unknown>): Promise<T> {
   const { data, error } = await sb.rpc(fn, args);
   if (error) throw new Error(error.message);
@@ -147,6 +176,21 @@ export const api = {
   /** Signed in, and only when your name was flagged (myPlayer().needs_rename). */
   renameUsername: (sb: SupabaseClient, username: string) => call(sb, "rename_username", { p_username: username }),
 
+  // Practice: solo, unrated, no timer.
+  /** Signed in. Tier 1–6 stays on that tier; null = auto. Same question until it's answered or skipped. */
+  nextPracticeQuestion: (sb: SupabaseClient, tier: number | null) =>
+    call<PracticeQuestion>(sb, "next_practice_question", { p_tier: tier }),
+  /** Signed in. Wrong format doesn't use up the question. */
+  submitPracticeAnswer: (sb: SupabaseClient, answer: string) =>
+    call<PracticeResult>(sb, "submit_practice_answer", { p_answer: answer }),
+  /** Signed in. Counts as wrong and shows the answer. */
+  skipPracticeQuestion: (sb: SupabaseClient) => call<PracticeResult>(sb, "skip_practice_question"),
+  /** Signed in. All-time numbers plus the saved tier setting. */
+  practiceStats: (sb: SupabaseClient) => call<PracticeStats>(sb, "practice_stats"),
+  /** Signed in. Only questions you've answered or skipped in practice. */
+  reportPracticeQuestion: (sb: SupabaseClient, questionId: string, reason: string) =>
+    call<void>(sb, "report_practice_question", { p_question: questionId, p_reason: reason }),
+
   // Early access. join_waitlist and check_access_code rate-limit by IP, so call them
   // from the browser client, never from server code (every visitor would share one IP).
   /** Works signed out. Already on the list is a quiet success. */
@@ -170,6 +214,11 @@ export function friendlyError(e: unknown): string {
     invalid_code: "That code doesn't match a waiting game.",
     match_full: "That game already has two players.",
     no_questions_for_tier: "Not enough questions loaded yet. Try again soon.",
+    // After no_questions_for_tier: "no_question" is part of that code, and the first match wins.
+    no_question: "There's no question to answer. Load the next one.",
+    in_match: "Finish your match first.",
+    not_attempted: "You can only report questions you've answered.",
+    invalid_tier: "Pick a tier from 1 to 6.",
     no_profile: "Finish setting up your profile first.",
     not_participant: "You're not in this match.",
     not_signed_in: "Sign in first.",

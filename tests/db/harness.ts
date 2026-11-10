@@ -77,13 +77,13 @@ export async function grantAccess(db: Db, uid: string) {
   );
 }
 
-/** Seed `perTier` questions in every tier. Answer of question i in tier t is "t*100+i". */
-export async function seedQuestions(db: Db, perTier = 5) {
+/** Seed `perTier` questions in every tier of one pool. Answer of question i in tier t is "t*100+i". */
+export async function seedQuestions(db: Db, perTier = 5, pool: "ranked" | "practice" = "ranked") {
   for (let t = 1; t <= 6; t++) {
     for (let i = 1; i <= perTier; i++) {
       await db.query(
-        `insert into questions (tier, topic, prompt, answer, solution) values ($1, 'Algebra', $2, $3, 'because')`,
-        [t, `Tier ${t} question ${i}`, String(t * 100 + i)],
+        `insert into questions (tier, topic, prompt, answer, solution, pool) values ($1, 'Algebra', $2, $3, 'because', $4)`,
+        [t, `Tier ${t} ${pool} question ${i}`, String(t * 100 + i), pool],
       );
     }
   }
