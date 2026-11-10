@@ -44,6 +44,9 @@ export function SiteHeaderView({ state }: { state: HeaderState }) {
         <a href="/#how-it-works" className={`${link} ${state === "no-access" ? "max-sm:hidden" : ""}`}>
           How it works
         </a>
+        <Link href="/rules" className={`${link} ${state === "no-access" ? "max-sm:hidden" : ""}`}>
+  Rules
+</Link>
         {state === "signed-out" && (
           <Link href="/login?next=/play" className={action}>
             Sign in
