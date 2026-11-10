@@ -1,9 +1,16 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { api } from "@/lib/erudent";
-import RenameForm from "@/components/RenameForm";
+import type { Metadata } from "next";
+import AuthShell from "@/components/AuthShell";
+import { RenameView } from "@/components/RenameForm";
+import { SiteHeaderView } from "@/components/SiteHeader";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Choose a new name — Erudent",
+};
 
 /** Players whose username breaks the naming rules land here before anything else. */
 export default async function RenamePage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
@@ -19,15 +26,8 @@ export default async function RenamePage({ searchParams }: { searchParams: Promi
   if (!profile.needs_rename) redirect(next);
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-[440px] flex-col justify-center gap-8 px-4 py-12 font-ui text-ink">
-      <div className="flex flex-col gap-4">
-        <h1 className="text-[40px] leading-[1.05] font-extrabold tracking-[-0.03em]">Pick a new username</h1>
-        <p className="text-[17px] leading-[26px] text-ink-muted">
-          <span className="break-all text-ink">@{profile.username}</span> doesn&apos;t fit our naming rules. Your Elo and
-          match history stay with you.
-        </p>
-      </div>
-      <RenameForm />
-    </main>
+    <AuthShell header={<SiteHeaderView state="setup" />}>
+      <RenameView username={profile.username} />
+    </AuthShell>
   );
 }
