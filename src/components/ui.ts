@@ -1,4 +1,4 @@
-/** Shared class strings for the player pages (practice, lobby). See erudent-design/DESIGN-SYSTEM.md. */
+/** Shared class strings for the player pages (practice, lobby, match). See erudent-design/DESIGN-SYSTEM.md. */
 
 export const kicker = "text-[13px] leading-none font-semibold tracking-[0.08em] text-ink-muted uppercase";
 
@@ -10,3 +10,7 @@ export const secondary =
 export const quiet = "inline-flex min-h-11 items-center text-[15px] font-semibold text-ink-muted hover:text-ink";
 
 export const caption = "text-[13px] leading-[18px] text-ink-muted";
+
+/** The one primary button on a screen: ink fill, on-ink text. */
+export const primary =
+  "inline-flex h-14 flex-none items-center justify-center rounded-(--r-md) bg-ink px-6 text-[15px] font-bold text-on-ink disabled:opacity-40";
