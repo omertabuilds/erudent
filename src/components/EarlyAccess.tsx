@@ -24,11 +24,11 @@ function maskCode(v: string) {
 }
 
 const field =
-  "h-[60px] min-w-0 flex-[1_1_240px] rounded-none border border-rule bg-sunken px-[18px] font-ui leading-normal text-ink placeholder:text-ink-muted placeholder:opacity-100";
+  "h-[60px] min-w-0 flex-[1_1_240px] rounded-(--r-md) border border-rule bg-sunken px-[18px] font-ui leading-normal text-ink placeholder:text-ink-muted placeholder:opacity-100";
 const primary =
-  "h-[60px] flex-none cursor-pointer rounded-none bg-ink px-7 font-ui text-[17px] leading-normal font-bold text-on-ink shadow-[inset_0_-4px_0_var(--rule)] active:translate-y-[3px] active:shadow-[inset_0_-1px_0_var(--rule)] disabled:cursor-wait";
+  "h-[60px] flex-none cursor-pointer rounded-(--r-md) bg-ink max-sm:flex-auto px-7 font-ui text-[17px] leading-normal font-bold text-on-ink shadow-[inset_0_-4px_0_var(--rule)] active:translate-y-[3px] active:shadow-[inset_0_-1px_0_var(--rule)] disabled:cursor-wait";
 const tabButton =
-  "min-h-12 flex-1 basis-0 cursor-pointer rounded-none bg-transparent px-4 font-ui text-[15px] leading-none font-semibold text-ink aria-pressed:bg-ink aria-pressed:text-on-ink";
+  "min-h-11 flex-1 basis-0 cursor-pointer rounded-(--r-sm) bg-transparent px-4 font-ui text-[15px] leading-none font-semibold text-ink aria-pressed:bg-ink aria-pressed:text-on-ink";
 const note = "mt-3 text-[13px] leading-5 text-ink-muted";
 const errorText = "mt-[10px] text-[14px] font-semibold text-pencil";
 const done = "mt-5 text-[19px] leading-[29px]";
@@ -84,19 +84,19 @@ export default function EarlyAccess({ redeemError, needsCode = false }: { redeem
   }
 
   return (
-    <div className="mt-10 max-w-[520px]">
+    <div className="mt-10 w-full max-w-[520px] text-left">
       {needsCode && (
         <p className="mb-4 text-[17px] leading-[26px] font-semibold text-ink" role="status">
           You need an invite code to play. Enter it below or join the waitlist.
         </p>
       )}
-      <div className="flex border border-rule" role="group" aria-label="Choose how to get in">
+      <div className="flex gap-1 rounded-(--r-md) border border-rule p-1" role="group" aria-label="Choose how to get in">
         <button type="button" className={tabButton} aria-pressed={tab === "wait"} onClick={() => setTab("wait")}>
           Join the waitlist
         </button>
         <button
           type="button"
-          className={`${tabButton} border-l border-rule`}
+          className={tabButton}
           aria-pressed={tab === "code"}
           onClick={() => setTab("code")}
         >

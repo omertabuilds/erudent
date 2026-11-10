@@ -4,13 +4,14 @@ Erudent is a competitive problem-solving arena — 1v1 duels, Elo, ranked tiers.
 
 - **Borrow nothing.** No school colors, crests, seals, Latin, roman-numeral dates or "EST." lines. Every motif comes from mathematics: ∃, ∎, theorems, numbered statements, construction lines.
 - **Monochrome first.** A screen is `paper` and `ink`. `pencil` is the one color, used the way a grader uses a red pencil: small, rare, meaningful.
-- **Printed, not rendered.** No shadows, gradients, glass, glow or blur. Separate with `hairline` rules and space.
-- **No rounded corners.** `radius-none` everywhere; `radius-full` only for avatars.
+- **Printed, not rendered.** No gradients, glass, glow or blur on UI. Separate with `hairline` rules and space.
+- **Soft corners, one shape language.** Buttons, inputs and cards use `r-md` (16px). Chips and tags use `r-pill`. `r-sm` (10px) only for a control nested inside an `r-md` frame. Avatars stay `radius-full`. Rules, tables and full-bleed sheets stay square.
+- **Depth is for floating things only.** `shadow-float` is the single shadow token: neutral, low opacity, never colored. It belongs to elements that float over the hero. Everything else sits flat on the page.
 - **Quiet confidence.** Large Bodoni, generous space (`space-32` between sections), short sentences. Say less.
 
 ## Not vibecoded
 
-Never ship: rounded cards with soft shadows; a 3-up grid of icon + title + blurb; pill badges with a colored dot; gradient or glowing text; emoji; a "New" chip above the hero; Inter, Geist or system-ui as the main face; Lucide icons as decoration; centered-everything layouts; numbers in a mono font; filler stats; "unlock", "supercharge", "level up".
+Never ship: soft shadows on anything that isn't floating; a 3-up grid of icon + title + blurb; pill badges with a colored dot; gradient or glowing text; emoji; a "New" chip above the hero; Inter, Geist or system-ui as the main face; Lucide icons as decoration; centered-everything layouts (a centered hero is fine; the rest of the page aligns to the grid); numbers in a mono font; filler stats; "unlock", "supercharge", "level up".
 
 Do: left-aligned asymmetric grids; numbered statements (Theorem 1, 2, 3) instead of feature cards; true small caps; lining tabular figures for anything that counts; one ∎ to close a section.
 
@@ -26,7 +27,8 @@ Do: left-aligned asymmetric grids; numbered statements (Theorem 1, 2, 3) instead
 - Dark is the default; Light is paper. Set `data-theme` on `<html>`.
 - `paper` page; `surface` sheets and panels, edged with `hairline`; `sunken` answer fields.
 - `ink` text; `ink-muted` secondary text and losses.
-- Primary button: `ink` fill, `on-ink` text, square. One per screen. Secondary button: transparent, 1px `rule` border, `ink` text.
+- Primary button: `ink` fill, `on-ink` text, `r-md`. One per screen. Secondary button: transparent, 1px `rule` border, `ink` text, `r-md`.
+- Chips: `r-pill`, 1px `rule` or `hairline` border, `ink` or `ink-muted` text. No colored dot, no fill.
 - `pencil` for: Elo gains, ✓, the ∎, the timer under 0:30, at most one emphasized word in a headline. Never a large fill, never a button.
 - Wins and losses: gains in `pencil` with "+N" or ✓; losses in `ink-muted` with "−N" or ✗. Never color alone.
 - Focus: 2px solid `focus`, 2px offset.
