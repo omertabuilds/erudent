@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { requirePlayer } from "@/lib/session";
-import { api, TIER_NAMES, type MyPlayer, type PracticeStats, type RecentMatch } from "@/lib/erudent";
+import { api, TIER_NAMES, type PracticeStats, type RecentMatch } from "@/lib/erudent";
 import { SiteHeaderView, gutter } from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
-import Avatar from "@/components/Avatar";
+import ProfileBanner from "@/components/ProfileBanner";
 import Lobby from "@/components/Lobby";
 import Reveal from "@/components/landing/Reveal";
 import { caption } from "@/components/ui";
@@ -56,8 +55,11 @@ export default async function PlayPage() {
 
       <SiteHeaderView state="player" current="play" />
 
-      <main className={`mx-auto w-full max-w-[1312px] flex-[1_0_auto] pt-10 pb-24 md:pt-16 md:pb-32 ${gutter}`}>
-        <div className="grid gap-16 md:grid-cols-12 md:gap-x-8 lg:gap-x-16">
+      <main className={`mx-auto w-full max-w-[1312px] flex-[1_0_auto] pt-6 pb-24 md:pt-10 md:pb-32 ${gutter}`}>
+        <h1 className="sr-only">Play</h1>
+        <ProfileBanner player={profile} rank={rankName} editable />
+
+        <div className="mt-10 grid gap-16 md:mt-14 md:grid-cols-12 md:gap-x-8 lg:gap-x-16">
           <div className="min-w-0 md:col-span-7">
             <Lobby streak={stats?.streak ?? 0} standing={standing} />
             <Reveal className="mt-16 md:mt-24">
@@ -65,8 +67,7 @@ export default async function PlayPage() {
             </Reveal>
           </div>
 
-          <aside aria-label="Your record" className="flex min-w-0 flex-col gap-10 md:col-span-4 md:col-start-9 md:pt-2">
-            <Player profile={profile} />
+          <aside aria-label="Your record" className="flex min-w-0 flex-col gap-10 md:col-span-4 md:col-start-9">
             {lastDuel && <LastDuel m={lastDuel} />}
             <PracticeRecord stats={stats} />
             <p className={`${caption} border-t border-hairline pt-4`}>Math. More subjects later.</p>
@@ -75,30 +76,6 @@ export default async function PlayPage() {
       </main>
 
       <SiteFooter />
-    </div>
-  );
-}
-
-function Player({ profile }: { profile: MyPlayer }) {
-  return (
-    <div className="flex items-center gap-3">
-      <Avatar username={profile.username} size={40} />
-      <div className="min-w-0">
-        <Link
-          href={`/u/${encodeURIComponent(profile.username)}`}
-          className="-my-2 inline-flex min-h-11 max-w-full items-center py-2 font-extrabold break-all underline-offset-4 hover:underline"
-        >
-          @{profile.username}
-        </Link>
-        <p className="text-[15px] leading-[22px] text-ink-muted tabular-nums">
-          <span aria-hidden="true">
-            {profile.wins}W · {profile.losses}L · {profile.draws}D
-          </span>
-          <span className="sr-only">
-            {profile.wins} wins, {profile.losses} losses, {profile.draws} draws
-          </span>
-        </p>
-      </div>
     </div>
   );
 }
