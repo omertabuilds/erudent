@@ -38,6 +38,11 @@ functions (RPCs) in `migrations/20261105000000_core.sql`. Wrappers for each live
 | `rename_username(username)` | signed in | Only for flagged names. Elo and history stay. |
 | `my_player()` | signed in | Your own profile plus your private `needs_rename`. |
 | `has_access()` | signed in | True once you've redeemed an invitation code. Without one, queueing, creating or joining a match and answering raise `no_access`. |
+| `next_practice_question(tier)` | signed in | Practice. Tier 1–6 stays there; null = auto (starts at your Elo's tier). Same question until it's answered or skipped. Never the answer. |
+| `submit_practice_answer(answer)` | signed in | Marks it and reveals answer + solution. Wrong format doesn't use the question up. |
+| `skip_practice_question()` | signed in | Counts as wrong, reveals answer + solution. |
+| `practice_stats()` | signed in | Attempted, correct, streak, best streak, per tier, and your saved tier setting. |
+| `report_practice_question(question, reason)` | signed in | Only for questions you've attempted in practice. Saved to `reports` with no match. |
 
 **Usernames:** 3–20 of a–z A–Z 0–9 _ . -, starting with a letter or digit, never two
 symbols in a row. Shown as typed, unique ignoring case. Reserved names and the wordlist
@@ -49,6 +54,12 @@ rules when they arrived are flagged in `private.username_flags`, which only the 
 **Rules:** questions A/B/C come from one tier below, at, and above the players'
 average Elo, worth 1/2/3 points. Ties go to the faster total time on correct answers.
 Elo starts at 900, K = 80 for the first 10 matches, then 20. Rank shows after 10 matches.
+
+**Practice:** solo and unrated, never touches Elo. Needs an invitation code and a valid
+username, and is off while you're in a live duel. Auto tier: 2 right in a row moves up a tier,
+a miss or skip moves down. Questions you've never seen come first, then the ones you practiced
+longest ago. Every answer revealed in practice goes into `seen_questions`, so ranked steers
+away from it. `practice_state` and `practice_attempts` are unreadable from the browser.
 
 ## Applying migrations
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { api, friendlyError } from "@/lib/erudent";
@@ -84,6 +85,12 @@ export default function Lobby() {
 
   return (
     <div className="flex flex-col gap-10">
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xs uppercase tracking-widest text-muted">Practice</h2>
+        <Link href="/practice" className="border border-foreground px-4 py-3 text-center">Practice</Link>
+        <p className="text-xs text-muted">Unrated · no timer · endless</p>
+      </section>
+
       <section className="flex flex-col gap-3">
         <h2 className="text-xs uppercase tracking-widest text-muted">Ranked</h2>
         {searching ? (
