@@ -1,39 +1,29 @@
-"use client";
+import type { Metadata } from "next";
+import AuthShell from "@/components/AuthShell";
+import GoogleSignIn from "@/components/GoogleSignIn";
+import { SiteHeaderView } from "@/components/SiteHeader";
+import { caption, kicker, title } from "@/components/ui";
 
-import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+export const metadata: Metadata = {
+  title: "Sign in — Erudent",
+};
 
 export default function LoginPage() {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function signIn() {
-    setBusy(true);
-    setError(null);
-    const next = new URLSearchParams(window.location.search).get("next") ?? "/play";
-    const { error } = await createClient().auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
-    });
-    if (error) {
-      setError("Couldn't reach Google. Try again.");
-      setBusy(false);
-    }
-  }
-
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-8 px-6">
-      <h1 className="font-serif text-5xl tracking-tight">erudent</h1>
-      <p className="text-muted">Sign in to play ranked math duels.</p>
-      <button
-        onClick={signIn}
-        disabled={busy}
-        className="border border-foreground bg-foreground px-4 py-3 text-background disabled:opacity-50"
-      >
-        {busy ? "Opening Google…" : "Continue with Google"}
-      </button>
-      {error && <p className="text-sm">{error}</p>}
-      <p className="text-xs text-muted">You must be 13 or older to play.</p>
-    </main>
+    <AuthShell header={<SiteHeaderView state="signed-out" />}>
+      <div className="max-w-[640px]">
+        <p className={kicker}>Sign in</p>
+        <h1 className={`${title} mt-5`}>There exists a faster solver than you. Find out who.</h1>
+      </div>
+      <div className="max-w-[480px]">
+        <p className="mt-6 text-ink-muted">Sign in to play ranked math duels.</p>
+        <div className="mt-10">
+          <GoogleSignIn />
+        </div>
+        <p className={`${caption} mt-6 border-t border-hairline pt-4`}>
+          Erudent is invite-only for now: you&apos;ll need a code to play. You must be 13 or older.
+        </p>
+      </div>
+    </AuthShell>
   );
 }

@@ -9,14 +9,10 @@ import {
   localUsernameProblem,
   type UsernameProblem,
 } from "@/lib/username";
+import { caption, field, label } from "@/components/ui";
 
-export const fieldClass =
-  "h-[60px] w-full min-w-0 rounded-none border border-rule bg-sunken px-[18px] font-ui text-[18px] leading-normal text-ink placeholder:text-ink-muted placeholder:opacity-100 aria-invalid:border-pencil";
-export const primaryButton =
-  "h-[60px] cursor-pointer rounded-none bg-ink px-7 font-ui text-[17px] leading-normal font-bold text-on-ink shadow-[inset_0_-4px_0_var(--rule)] active:translate-y-[3px] active:shadow-[inset_0_-1px_0_var(--rule)] disabled:cursor-not-allowed disabled:opacity-50";
-export const labelClass = "font-ui text-[15px] font-semibold text-ink";
-export const noteClass = "text-[13px] leading-5 text-ink-muted";
-export const errorClass = "text-[14px] font-semibold text-pencil";
+/** A form-level error under the submit button. */
+export const errorClass = "text-[15px] leading-[22px] text-ink";
 
 /**
  * Username state for a form. Rules the browser knows are checked as you type; the
@@ -69,19 +65,30 @@ export function useUsername() {
   };
 }
 
+const MAX = 20;
+
+/**
+ * Label and a live count, the field, then one status line:
+ * "✓ Available" in pencil, or what's wrong in ink-muted, then the naming rules.
+ */
 export default function UsernameField({ state, autoFocus }: { state: ReturnType<typeof useUsername>; autoFocus?: boolean }) {
   const { value, setValue, problem, checking, available } = state;
   return (
-    <div className="flex flex-col gap-2">
-      <label htmlFor="username" className={labelClass}>
-        Username
-      </label>
+    <div className="flex flex-col">
+      <div className="flex items-baseline justify-between gap-4">
+        <label htmlFor="username" className={label}>
+          Username
+        </label>
+        <span className={`${caption} tabular-nums`} aria-hidden="true">
+          {[...value].length}/{MAX}
+        </span>
+      </div>
       <input
         id="username"
-        className={fieldClass}
+        className={`${field} mt-2`}
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        maxLength={20}
+        maxLength={MAX}
         autoFocus={autoFocus}
         autoComplete="username"
         autoCapitalize="none"
@@ -92,15 +99,16 @@ export default function UsernameField({ state, autoFocus }: { state: ReturnType<
         aria-describedby={problem ? "username-error username-hint" : "username-hint username-status"}
       />
       {problem ? (
-        <p id="username-error" className={errorClass} role="alert">
+        <p id="username-error" className={`${caption} mt-2 min-h-[18px] font-semibold`} role="alert">
+          <span aria-hidden="true">✗ </span>
           {USERNAME_MESSAGES[problem]}
         </p>
       ) : (
-        <p id="username-status" className="min-h-5 text-[14px] text-ink-muted" role="status">
-          {checking ? "Checking…" : available ? <><span className="text-pencil">✓</span> Available</> : null}
+        <p id="username-status" className={`${caption} mt-2 min-h-[18px] font-semibold`} role="status">
+          {checking ? "Checking…" : available ? <span className="text-pencil">✓ Available</span> : null}
         </p>
       )}
-      <p id="username-hint" className={noteClass}>
+      <p id="username-hint" className={`${caption} mt-1`}>
         {USERNAME_HINT}
       </p>
     </div>

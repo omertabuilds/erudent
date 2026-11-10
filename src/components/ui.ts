@@ -14,3 +14,13 @@ export const caption = "text-[13px] leading-[18px] text-ink-muted";
 /** The one primary button on a screen: ink fill, on-ink text. */
 export const primary =
   "inline-flex h-14 flex-none items-center justify-center rounded-(--r-md) bg-ink px-6 text-[15px] font-bold text-on-ink disabled:opacity-40";
+
+/** Section-title size: page headlines below the landing hero. */
+export const title = "text-[clamp(36px,5vw,56px)] leading-none font-extrabold tracking-[-0.03em]";
+
+/** Form label: 15px, 600. */
+export const label = "text-[15px] leading-[22px] font-semibold text-ink";
+
+/** Text and date inputs: a sunken well, r-md, hairline edge. */
+export const field =
+  "h-14 w-full min-w-0 rounded-(--r-md) border border-hairline bg-sunken px-4 text-[17px] leading-normal text-ink placeholder:text-ink-muted placeholder:opacity-100 hover:border-rule aria-invalid:border-rule";
