@@ -68,8 +68,15 @@ export type LeaderboardRow = {
   draws: number;
 };
 
+/** Banner art presets (profiles.banner). */
+export const BANNERS = ["grid", "mountain", "construction", "solid"] as const;
+export type Banner = (typeof BANNERS)[number];
+
+/** Banner, accent (0 = rank hue, 1–6 = a rank hue) and tagline, as update_profile_style saves them. */
+export type ProfileStyle = { banner: Banner; accent: number; tagline: string | null };
+
 /** The signed-in player. needs_rename is private: only they can see it. */
-export type MyPlayer = {
+export type MyPlayer = ProfileStyle & {
   id: string;
   username: string;
   elo: number;
@@ -78,7 +85,15 @@ export type MyPlayer = {
   losses: number;
   draws: number;
   needs_rename: boolean;
+  /** Storage path in the "avatars" bucket, or null for the initial-letter avatar. */
+  avatar_path: string | null;
+  /** Public URL built from avatar_path. */
+  avatar_url: string | null;
 };
+
+/** Public URL of a file in the avatars bucket. */
+export const avatarUrl = (sb: SupabaseClient, path: string | null) =>
+  path ? sb.storage.from("avatars").getPublicUrl(path).data.publicUrl : null;
 
 export type ProfileSummary = {
   username: string;
@@ -142,7 +157,15 @@ export const api = {
   /** Signed in. True once you've redeemed an invitation code. */
   hasAccess: (sb: SupabaseClient) => call<boolean>(sb, "has_access"),
   /** Signed in. Null if you haven't made a profile yet. */
-  myPlayer: async (sb: SupabaseClient) => (await call<MyPlayer[]>(sb, "my_player"))[0] ?? null,
+  myPlayer: async (sb: SupabaseClient): Promise<MyPlayer | null> => {
+    const p = (await call<Omit<MyPlayer, "avatar_url">[]>(sb, "my_player"))[0];
+    return p ? { ...p, avatar_url: avatarUrl(sb, p.avatar_path) } : null;
+  },
+  /** Signed in. Saves banner, accent and tagline together. Trims the tagline; empty → null. */
+  updateProfileStyle: (sb: SupabaseClient, style: ProfileStyle) =>
+    call<ProfileStyle>(sb, "update_profile_style", { p_banner: style.banner, p_accent: style.accent, p_tagline: style.tagline }),
+  /** Signed in. A file you've uploaded to avatars/<your id>/, or null to go back to the initial. */
+  setAvatar: (sb: SupabaseClient, path: string | null) => call<string | null>(sb, "set_avatar", { p_path: path }),
   createProfile: (sb: SupabaseClient, username: string, birthDate: string) =>
     call(sb, "create_profile", { p_username: username, p_birth_date: birthDate }),
   joinQueue: (sb: SupabaseClient) => call<string | null>(sb, "join_queue"),
@@ -224,6 +247,20 @@ export function friendlyError(e: unknown): string {
     not_signed_in: "Sign in first.",
     invalid_email: "Enter a valid email address.",
     rate_limited: "Too many tries. Wait a few minutes and try again.",
+    tagline_not_allowed: "That tagline has a word we don't allow. Try another.",
+    tagline_length: "Keep the tagline to 60 characters.",
+    invalid_banner: "Pick one of the four banners.",
+    invalid_accent: "Pick one of the accents.",
+    // Profile pictures. avatar_* codes come from the browser (lib/avatar.ts) or set_avatar;
+    // the rest are Storage's own messages.
+    avatar_too_big: "That picture is over 2 MB. Pick a smaller one.",
+    "exceeded the maximum allowed size": "That picture is over 2 MB. Pick a smaller one.",
+    avatar_wrong_type: "Use a JPEG, PNG or WebP picture.",
+    "mime type": "Use a JPEG, PNG or WebP picture.",
+    avatar_unreadable: "Couldn't read that picture. Try another.",
+    avatar_path_invalid: "Couldn't save that picture. Try again.",
+    avatar_missing: "Couldn't save that picture. Try again.",
+    avatar_upload_failed: "Couldn't upload that picture. Try again.",
   };
   for (const [code, text] of Object.entries(known)) if (msg.includes(code)) return text;
   return "Something went wrong. Try again.";

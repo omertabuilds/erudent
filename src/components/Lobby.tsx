@@ -5,12 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { api, friendlyError } from "@/lib/erudent";
-import { kicker, quiet, secondary } from "@/components/ui";
+import { quiet, secondary } from "@/components/ui";
 
 const POLL_MS = 2000;
 
 /**
- * The hero (statement + the page's one primary button) and three numbered statements:
+ * The page's one primary button with the rank sentence beside it, then three numbered statements:
  * Ranked, Practice, Play a friend. Searching and friend-waiting live inline in their rows.
  * `standing` is the rank sentence set beside the button ("Scholar. 1,142 Elo.").
  */
@@ -108,12 +108,8 @@ export default function Lobby({ streak, standing }: { streak: number; standing: 
 
   return (
     <>
-      <section aria-labelledby="lobby-title">
-        <p className={kicker}>Lobby</p>
-        <h1 id="lobby-title" className="mt-4 text-[clamp(36px,5vw,56px)] leading-[1] font-extrabold tracking-[-0.03em]">
-          There exists a faster solver than you.
-        </h1>
-        <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-8">
+      <section aria-label="Ranked">
+        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-8">
           <button
             onClick={() => {
               setError(null);

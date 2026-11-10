@@ -36,7 +36,9 @@ functions (RPCs) in `migrations/20261105000000_core.sql`. Wrappers for each live
 | `get_recent_matches(username)` | anyone | Last 10 finished duels, any case. For profile pages. |
 | `check_username(username)` | signed in | Null if allowed and free, else the reason (`username_taken`, `username_blocked`…). |
 | `rename_username(username)` | signed in | Only for flagged names. Elo and history stay. |
-| `my_player()` | signed in | Your own profile plus your private `needs_rename`. |
+| `my_player()` | signed in | Your own profile plus your private `needs_rename`, and your banner, accent, tagline and `avatar_path`. |
+| `update_profile_style(banner, accent, tagline)` | signed in | Your banner preset, accent (0 = rank hue, 1–6) and tagline (≤ 60, blocked wordlist applies). |
+| `set_avatar(path)` | signed in | Point your profile at a file you uploaded to `avatars/<your id>/`, or null to remove it. |
 | `has_access()` | signed in | True once you've redeemed an invitation code. Without one, queueing, creating or joining a match and answering raise `no_access`. |
 | `next_practice_question(tier)` | signed in | Practice. Tier 1–6 stays there; null = auto (starts at your Elo's tier). Same question until it's answered or skipped. Never the answer. |
 | `submit_practice_answer(answer)` | signed in | Marks it and reveals answer + solution. Wrong format doesn't use the question up. |
