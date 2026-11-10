@@ -9,7 +9,7 @@ export const metadata = {
 export default function RulesPage() {
   return (
     <div className="flex min-h-screen flex-col bg-paper font-ui text-[17px] leading-[26px] text-ink">
-      <header className="flex items-center justify-between gap-3 border-b border-hairline py-5 px-[clamp(16px,4vw,56px)]">
+      <header className="flex items-center justify-between gap-3 border-b border-hairline py-5 px-[clamp(20px,4vw,56px)]">
         <Link href="/" className="flex min-h-11 items-center gap-3">
           <Image
             src="/logos/erudent-mark-small.svg"
@@ -30,7 +30,7 @@ export default function RulesPage() {
         </Link>
       </header>
 
-      <main className="w-full max-w-[760px] px-[clamp(16px,4vw,56px)] py-12 sm:py-16">
+      <main className="mx-auto w-full max-w-[760px] px-[clamp(20px,4vw,56px)] py-12 sm:py-16">
         <p className="mb-4 text-sm text-ink-muted">
           Rules
         </p>
@@ -51,6 +51,15 @@ export default function RulesPage() {
 
           <section className="border-t border-hairline pt-8">
             <h2 className="mb-3 text-lg font-semibold">
+              Recorded runs
+            </h2>
+            <p className="leading-relaxed text-ink-muted">
+              After 30 seconds in the ranked queue, you may be matched against a recorded run of a real player. It&apos;s rated like a normal duel, but only your rating moves.
+            </p>
+          </section>
+
+          <section className="border-t border-hairline pt-8">
+            <h2 className="mb-3 text-lg font-semibold">
               Points
             </h2>
             <ul className="mb-4 list-disc space-y-2 pl-5 tabular-nums lining-nums text-ink-muted">
@@ -61,6 +70,9 @@ export default function RulesPage() {
             <p className="leading-relaxed text-ink-muted">
               Maximum 6. All or nothing: a problem is right or it&apos;s worth 0. Your level comes from the average rating of both players.
             </p>
+            <p className="mt-3 leading-relaxed text-ink-muted">
+              Your rank stays hidden until you finish 10 placement matches.
+            </p>
           </section>
 
           <section className="border-t border-hairline pt-8">
@@ -70,6 +82,9 @@ export default function RulesPage() {
             <p className="leading-relaxed text-ink-muted">
               Numbers only. Whole numbers, or fractions typed like{" "}
               <code>3/4</code>. No decimals. Fractions are simplified for you. One attempt per problem. A wrong answer costs nothing but that problem.
+            </p>
+            <p className="mt-3 leading-relaxed text-ink-muted">
+              A badly formatted answer (like <code>0.5</code>) doesn&apos;t use up your attempt. Negative answers like <code>-3/4</code> work too.
             </p>
           </section>
 
@@ -96,7 +111,7 @@ export default function RulesPage() {
               Focus mode
             </h2>
             <p className="mb-4 leading-relaxed text-ink-muted">
-              Ranked duels open in fullscreen. Text can&apos;t be copied or selected.
+              Ranked duels offer fullscreen. Text can&apos;t be copied or selected.
             </p>
             <ul className="mb-4 list-disc space-y-2 pl-5 text-ink-muted">
               <li>Leave the tab once: a warning.</li>
@@ -112,7 +127,7 @@ export default function RulesPage() {
               Fair play
             </h2>
             <p className="leading-relaxed text-ink-muted">
-              Answers are checked and timed on the server. Solves that are too fast for their tier are flagged, and a member of the team reviews every flag.
+              Answers are checked and timed on the server. Solves that are too fast for their tier are flagged.
             </p>
           </section>
 
@@ -121,7 +136,7 @@ export default function RulesPage() {
               Reports
             </h2>
             <p className="leading-relaxed text-ink-muted">
-              After a duel, report a wrong problem or a suspected cheater from the results screen. A person reads every report.
+              After a duel, report a wrong problem or a suspected cheater from the results screen. Flags and reports are reviewed by the team.
             </p>
           </section>
 
@@ -130,17 +145,10 @@ export default function RulesPage() {
               Friend duels
             </h2>
             <p className="leading-relaxed text-ink-muted">
-              Duels from an invite link are unranked. Your rating doesn&apos;t change.
+              Duels with a friend (link or code) are unranked. Your rating doesn&apos;t change.
             </p>
           </section>
         </div>
-
-        <p className="mt-8 border-t border-hairline pt-8 text-ink-muted">
-          How your rating moves is on{" "}
-          <Link href="/elo" className="text-ink underline">
-            How Elo works
-          </Link>. ∎
-        </p>
       </main>
 
       <footer className="flex flex-wrap justify-between gap-2 border-t border-hairline py-5 text-[13px] text-ink-muted px-[clamp(20px,4vw,56px)]">
