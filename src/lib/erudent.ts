@@ -18,6 +18,14 @@ export type MatchQuestion = {
   solution?: string; // only after the match ends
 };
 
+/** Public profile style get_match adds to each player, for the duel screen's player cards. */
+export type MatchCard = Pick<ProfileStyle, "banner" | "accent"> & {
+  avatar_path: string | null;
+  wins: number;
+  losses: number;
+  draws: number;
+};
+
 export type MatchState = {
   id: string;
   mode: "ranked" | "friend" | "async";
@@ -37,8 +45,8 @@ export type MatchState = {
     focus_strikes: number;
     rank: string;
     answers: { slot: Slot; answer: string | null; correct: boolean }[];
-  };
-  opponent: {
+  } & MatchCard;
+  opponent: ({
     username: string;
     is_ghost: boolean;
     elo_before: number;
@@ -47,7 +55,7 @@ export type MatchState = {
     result: "win" | "loss" | "draw" | null;
     solved: Slot[];
     rank: string;
-  } | null;
+  } & MatchCard) | null;
   questions: MatchQuestion[];
 };
 
