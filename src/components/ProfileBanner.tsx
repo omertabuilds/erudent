@@ -285,8 +285,8 @@ export default function ProfileBanner({ player, rank, editable = false }: { play
   );
 }
 
-/** Uploaded picture (round, cover) or the initial. 72px on md+, 56px on phones, edged in surface over the banner. */
-function Picture({ username, url, size, ring = true }: { username: string; url: string | null; size?: number; ring?: boolean }) {
+/** Uploaded picture (round, cover) or the initial. 72px on md+, 56px on phones (or `size`), edged in surface over the banner. */
+export function Picture({ username, url, size, ring = true }: { username: string; url: string | null; size?: number; ring?: boolean }) {
   const edge = ring ? "rounded-full border-4 border-surface bg-surface" : "";
   const img = (px: number) =>
     url ? (
