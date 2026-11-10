@@ -13,6 +13,7 @@ export const metadata: Metadata = {
 export default async function MatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   await requirePlayer(`/match/${id}`);
-  // MatchRoom hides the header and footer while the clock runs.
-  return <MatchRoom matchId={id} header={<SiteHeaderView state="player" />} footer={<SiteFooter />} />;
+  // MatchRoom hides the header and footer while the clock runs. A duel is part of Play: its link reads as current
+  // (and drops the button look, which also keeps the header inside 390px).
+  return <MatchRoom matchId={id} header={<SiteHeaderView state="player" current="play" />} footer={<SiteFooter />} />;
 }
