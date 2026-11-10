@@ -360,7 +360,8 @@ type Side = {
   username: string;
   avatar: string | null;
   banner: Banner;
-  color: string;
+  color: string; // banner tint
+  fill: string; // points bar
   rank: string;
   tier: number;
   elo: number;
@@ -382,6 +383,7 @@ function buildSides(sb: ReturnType<typeof createClient>, m: MatchState, points: 
     avatar: avatarUrl(sb, m.me.avatar_path ?? null),
     banner: m.me.banner ?? "grid",
     color: hue(m.me.accent || meTier),
+    fill: barFill(m.me.accent || meTier),
     rank: m.me.rank,
     tier: meTier,
     elo: m.me.elo_after ?? m.me.elo_before,
@@ -409,6 +411,7 @@ function buildSides(sb: ReturnType<typeof createClient>, m: MatchState, points: 
     avatar: avatarUrl(sb, o.avatar_path ?? null),
     banner: o.banner ?? "grid",
     color: hue(o.accent || oTier),
+    fill: barFill(o.accent || oTier),
     rank: o.rank,
     tier: oTier,
     elo: o.elo_after ?? o.elo_before,
@@ -470,7 +473,10 @@ function Marks({ side, flip }: { side: Side; flip?: boolean }) {
   );
 }
 
-/** One segment per point. Filled in the player's accent; the track is hairline. */
+/** The bar's fill: the accent's hue, or ink when that hue is grey (Slate) or there's none (unranked), so filled never reads as empty. */
+const barFill = (n: number) => (n >= 2 && n <= 6 ? `var(--rank-${n})` : "var(--ink)");
+
+/** One segment per point. Filled in the player's accent (or ink); empty segments are hairline. */
 function PointsBar({ score, max, color, flip }: { score: number; max: number; color: string; flip?: boolean }) {
   return (
     <div aria-hidden="true" className={`flex gap-1 ${flip ? "flex-row-reverse" : ""}`}>
@@ -530,7 +536,7 @@ function PlayerCard({ side, max, flip }: { side: Side; max: number; flip?: boole
           <span className="text-[17px] font-semibold text-ink-muted">/ {max} pts</span>
         </p>
         <div className="w-full">
-          <PointsBar score={side.score} max={max} color={side.color} flip={flip} />
+          <PointsBar score={side.score} max={max} color={side.fill} flip={flip} />
         </div>
         <Marks side={side} flip={flip} />
         {side.ghost && <p className={caption}>Recorded run</p>}
