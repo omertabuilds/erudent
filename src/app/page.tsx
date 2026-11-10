@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import EarlyAccess, { type RedeemError } from "@/components/EarlyAccess";
+import Climb from "@/components/landing/Climb";
 
 export const metadata: Metadata = {
   title: "Erudent — early access",
@@ -22,30 +23,24 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         <span className="text-[22px] leading-none font-extrabold tracking-[-0.02em]">Erudent</span>
       </header>
 
-      <main className={`flex flex-[1_0_auto] items-center pt-6 pb-14 ${gutter}`}>
-        <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center justify-between gap-x-16 gap-y-12">
-          <div className="max-w-[620px] min-w-0 flex-[1_1_520px]">
-            <h1 className="text-[clamp(52px,8vw,104px)] leading-[.95] font-extrabold tracking-[-0.04em]">
+      <main className="flex-[1_0_auto]">
+        {/* md+: scene, then text. Below md: text first, scene underneath. */}
+        <section className="relative flex flex-col overflow-hidden pb-24">
+          <div className="order-2 mt-14 md:order-1 md:mt-0">
+            <Climb />
+          </div>
+          <div className="relative order-1 mx-auto flex w-full max-w-[760px] flex-col items-center px-4 pt-10 text-center md:order-2 md:pt-1">
+            <h1 className="text-[clamp(52px,8vw,104px)] leading-[.95] font-extrabold tracking-[-0.04em] md:text-[clamp(56px,5.8vw,76px)] md:whitespace-nowrap">
               Math duels.
-              <br />
-              Ranked.
+              <br className="md:hidden" /> Ranked.
             </h1>
-            <p className="mt-6 max-w-[460px] text-[19px] leading-[29px] text-ink-muted">
+            <p className="mt-5 max-w-[460px] text-[19px] leading-[29px] text-ink-muted">
               Same three problems. Five minutes. One opponent. Early access opens by invitation.
             </p>
 
             <EarlyAccess redeemError={redeemError} needsCode={access === "required"} />
           </div>
-
-          <Image
-            src="/logos/erudent-mark.svg"
-            alt=""
-            width={420}
-            height={420}
-            priority
-            className="block h-auto w-[min(100%,420px)] flex-[0_1_420px]"
-          />
-        </div>
+        </section>
       </main>
 
       <footer className={`flex flex-wrap justify-between gap-2 border-t border-hairline py-5 text-[13px] text-ink-muted ${gutter}`}>
