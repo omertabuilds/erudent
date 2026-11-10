@@ -3,7 +3,7 @@ Erudent is a competitive problem-solving arena — 1v1 duels, Elo, ranked tiers.
 ## Principles
 
 - **Borrow nothing.** No school colors, crests, seals, Latin, roman-numeral dates or "EST." lines. Every motif comes from mathematics: ∃, ∎, theorems, numbered statements, construction lines.
-- **Monochrome first.** A screen is `paper` and `ink`. `pencil` is the one color, used the way a grader uses a red pencil: small, rare, meaningful.
+- **Monochrome first.** A screen is `paper` and `ink`. `pencil` is the one color, used the way a grader uses a red pencil: small, rare, meaningful. The six rank hues are the only other colors, and only for rank marks and profile accents.
 - **Printed, not rendered.** No gradients, glass, glow or blur on UI. Separate with `hairline` rules and space.
 - **Soft corners, one shape language.** Buttons, inputs and cards use `r-md` (16px). Chips and tags use `r-pill`. `r-sm` (10px) only for a control nested inside an `r-md` frame. Avatars stay `radius-full`. Rules, tables and full-bleed sheets stay square.
 - **Depth is for floating things only.** `shadow-float` is the single shadow token: neutral, low opacity, never colored. It belongs to elements that float over the hero. Everything else sits flat on the page.
@@ -30,6 +30,7 @@ Do: left-aligned asymmetric grids; numbered statements (Theorem 1, 2, 3) instead
 - Primary button: `ink` fill, `on-ink` text, `r-md`. One per screen. Secondary button: transparent, 1px `rule` border, `ink` text, `r-md`.
 - Chips: `r-pill`, 1px `rule` or `hairline` border, `ink` or `ink-muted` text. No colored dot, no fill.
 - `pencil` for: Elo gains, ✓, the ∎, the timer under 0:30, at most one emphasized word in a headline. Never a large fill, never a button.
+- Rank hues: `rank-1` … `rank-6` (Novice slate, Apprentice teal, Scholar blue, Savant violet, Sage green, Erudite gold), 4.5:1+ on paper, surface and sunken in both themes. Used only for rank marks (the rank tag: `r-pill`, hairline border, no fill, hue text) and profile accents (the banner tint, at low strength). Never for gains, ✓, ∎ or buttons: `pencil` keeps those.
 - Wins and losses: gains in `pencil` with "+N" or ✓; losses in `ink-muted` with "−N" or ✗. Never color alone.
 - Focus: 2px solid `focus`, 2px offset.
 
