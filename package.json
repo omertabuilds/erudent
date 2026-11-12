@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "import-questions": "tsx --env-file=.env.local scripts/import-questions.ts"
+    "import-questions": "tsx --env-file=.env.local scripts/import-questions.ts",
+    "upload-drafts": "tsx --env-file-if-exists=.env.local scripts/upload-drafts.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
