@@ -452,4 +452,24 @@ describe("leaderboard", () => {
       { place: 2, username: "sage", rank: "Sage" },
     ]);
   });
+
+  test("filtering by tier keeps global places", async () => {
+    await makeUser(db, "sage", 1400, 12);
+    await makeUser(db, "erudite", 1550, 20);
+    const rows = await asUser<{ place: number; username: string }>(
+      db, null, `select place, username from public.get_leaderboard(100, 5)`,
+    );
+    expect(rows).toEqual([{ place: 2, username: "sage" }]);
+  });
+
+  test("a player's place, null while still in placement", async () => {
+    await makeUser(db, "newbie", 1600, 3);
+    await makeUser(db, "sage", 1400, 12);
+    await makeUser(db, "erudite", 1550, 20);
+    const place = async (name: string) =>
+      (await asUser<{ p: number | null }>(db, null, `select public.get_player_place($1) as p`, [name]))[0].p;
+    expect(await place("SAGE")).toBe(2);
+    expect(await place("newbie")).toBeNull();
+    expect(await place("nobody")).toBeNull();
+  });
 });
