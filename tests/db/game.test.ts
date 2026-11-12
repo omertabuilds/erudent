@@ -291,6 +291,54 @@ describe("async match", () => {
     expect(after).toBe(aliceElo); // the recorded player's rating doesn't move
   });
 
+  async function ghostMatch(uid: string) {
+    expect(await rpc(db, uid, "join_queue")).toBeNull();
+    await db.query(`update queue set joined_at = now() - interval '31 seconds' where user_id = $1`, [uid]);
+    const amid = await rpc<string>(db, uid, "join_queue");
+    expect(amid).toBeTruthy();
+    return amid!;
+  }
+
+  test("a run against a ghost becomes a ghost for the next player", async () => {
+    const { a, b, mid } = await rankedMatch();
+    await startedAgo(db, mid, 60);
+    await answerAll(a, mid, { A: true, B: false, C: false });
+    await answerAll(b, mid, { A: false, B: false, C: false });
+
+    const carl = await makeUser(db, "carl", 900);
+    const carlMatch = await ghostMatch(carl);
+    await startedAgo(db, carlMatch, 60);
+    await answerAll(carl, carlMatch, { A: true, B: true, C: true });
+
+    // Take the original live match out of the ghost pool, so carl's run is the only one left.
+    await db.query(`update matches set forfeited_by = $1 where id = $2`, [a, mid]);
+    const dana = await makeUser(db, "dana", 900);
+    const danaMatch = await ghostMatch(dana);
+    const m = await rpc<MatchState>(db, dana, "get_match", [danaMatch]);
+    expect(m.mode).toBe("async");
+    expect(m.opponent?.username).toBe("carl");
+    expect(m.opponent?.is_ghost).toBe(true);
+  });
+
+  test("an async run with no answers isn't used as a ghost", async () => {
+    const { a, b, mid } = await rankedMatch();
+    await startedAgo(db, mid, 60);
+    await answerAll(a, mid, { A: true, B: false, C: false });
+    await answerAll(b, mid, { A: false, B: false, C: false });
+
+    const carl = await makeUser(db, "carl", 900);
+    const carlMatch = await ghostMatch(carl);
+    await startedAgo(db, carlMatch, 400); // ran out the clock without answering
+    await rpc(db, carl, "finish_match", [carlMatch]);
+
+    // Take the original live match out of the ghost pool, so only carl's empty run is left.
+    await db.query(`update matches set forfeited_by = $1 where id = $2`, [a, mid]);
+    const dana = await makeUser(db, "dana", 900);
+    expect(await rpc(db, dana, "join_queue")).toBeNull();
+    await db.query(`update queue set joined_at = now() - interval '31 seconds' where user_id = $1`, [dana]);
+    expect(await rpc(db, dana, "join_queue")).toBeNull();
+  });
+
   test("no recorded run available: keep waiting", async () => {
     const carl = await makeUser(db, "carl");
     await rpc(db, carl, "join_queue");
