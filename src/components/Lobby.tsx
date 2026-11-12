@@ -6,8 +6,11 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { api, friendlyError } from "@/lib/erudent";
 import { quiet, secondary } from "@/components/ui";
+import QueueWarmup from "@/components/QueueWarmup";
 
 const POLL_MS = 2000;
+/** How long "Opponent found" shows before the match opens. Matches start 5 s after they're made. */
+const FOUND_HOLD_MS = 3000;
 
 /**
  * The page's one primary button with the rank sentence beside it, then three numbered statements:
@@ -19,10 +22,14 @@ export default function Lobby({ streak, standing }: { streak: number; standing: 
   const sb = useRef(createClient()).current;
   const [searching, setSearching] = useState(false);
   const [waitedSec, setWaitedSec] = useState(0);
+  /** The ranked match the queue returned, held for FOUND_HOLD_MS before opening it. */
+  const [found, setFound] = useState<string | null>(null);
+  const [foundLeft, setFoundLeft] = useState(0);
   const [friendCode, setFriendCode] = useState<{ match_id: string; code: string } | null>(null);
   const [joinCode, setJoinCode] = useState("");
   const [copied, setCopied] = useState<"link" | "code" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const queuedAt = useRef(0);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => {
@@ -34,17 +41,24 @@ export default function Lobby({ streak, standing }: { streak: number; standing: 
     api.myActiveMatch(sb).then((id) => id && router.replace(`/match/${id}`)).catch(() => {});
   }, [sb, router]);
 
-  // Ranked queue: keep asking the server for a match every 2 seconds.
+  // Ranked queue: keep asking the server for a match every 2 seconds. Queue rows unpolled for
+  // 10 s are skipped by matchmaking, so this loop depends on nothing but `searching`: the warmup
+  // and the clock below re-render the lobby without restarting it.
   useEffect(() => {
     if (!searching) return;
     let stopped = false;
-    const started = Date.now();
     const tick = async () => {
       if (stopped) return;
-      setWaitedSec(Math.floor((Date.now() - started) / 1000));
       try {
         const id = await api.joinQueue(sb);
-        if (id) return router.push(`/match/${id}`);
+        // Matched just as the queue was cancelled: the match exists, so open it as before.
+        if (stopped) return void (id && router.push(`/match/${id}`));
+        if (id) {
+          router.prefetch(`/match/${id}`);
+          setFoundLeft(Math.ceil(FOUND_HOLD_MS / 1000));
+          setFound(id);
+          return;
+        }
       } catch (e) {
         setError(friendlyError(e));
         setSearching(false);
@@ -59,6 +73,25 @@ export default function Lobby({ streak, standing }: { streak: number; standing: 
     };
   }, [searching, sb, router]);
 
+  // Time in queue, once a second, separate from the poll so a slow request doesn't stall it.
+  useEffect(() => {
+    if (!searching || found) return;
+    const t = setInterval(() => setWaitedSec(Math.floor((Date.now() - queuedAt.current) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [searching, found]);
+
+  // Match found: say so for a moment, then open it the way the queue always has.
+  useEffect(() => {
+    if (!found) return;
+    const at = Date.now();
+    const t = setInterval(() => setFoundLeft(Math.ceil((FOUND_HOLD_MS - (Date.now() - at)) / 1000)), 250);
+    const go = setTimeout(() => router.push(`/match/${found}`), FOUND_HOLD_MS);
+    return () => {
+      clearInterval(t);
+      clearTimeout(go);
+    };
+  }, [found, router]);
+
   // Friend game: wait for the friend to join.
   useEffect(() => {
     if (!friendCode) return;
@@ -69,7 +102,16 @@ export default function Lobby({ streak, standing }: { streak: number; standing: 
     return () => clearInterval(t);
   }, [friendCode, sb, router]);
 
+  function startSearch() {
+    setError(null);
+    setFound(null);
+    setWaitedSec(0);
+    queuedAt.current = Date.now();
+    setSearching(true);
+  }
+
   async function cancelSearch() {
+    if (found) return;
     setSearching(false);
     await api.leaveQueue(sb).catch(() => {});
   }
@@ -111,14 +153,11 @@ export default function Lobby({ streak, standing }: { streak: number; standing: 
       <section aria-label="Ranked">
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-8">
           <button
-            onClick={() => {
-              setError(null);
-              setSearching(true);
-            }}
+            onClick={startSearch}
             disabled={searching}
             className="inline-flex h-14 flex-none items-center rounded-(--r-md) bg-ink px-8 text-[17px] font-bold text-on-ink disabled:opacity-40 max-sm:w-full max-sm:justify-center"
           >
-            {searching ? "Searching…" : "Play ranked"}
+            {found ? "Match found" : searching ? "Searching…" : "Play ranked"}
           </button>
           <p className="text-[19px] leading-[29px] text-ink-muted tabular-nums">{standing}</p>
         </div>
@@ -130,9 +169,13 @@ export default function Lobby({ streak, standing }: { streak: number; standing: 
           title="Ranked"
           live
           claim={
-            searching ? (
+            found ? (
               <>
-                Finding an opponent… <span className="tabular-nums">{waitedSec}s</span>
+                Opponent found. Starting in <span className="tabular-nums">{Math.max(1, foundLeft)}</span>…
+              </>
+            ) : searching ? (
+              <>
+                Finding an opponent…
                 <span className="block">
                   {waitedSec < 15 ? "Looking near your rating" : waitedSec < 30 ? "Widening the search" : "Matching you with a recorded run"}
                 </span>
@@ -141,9 +184,10 @@ export default function Lobby({ streak, standing }: { streak: number; standing: 
               "Three problems, five minutes, focus mode."
             )
           }
+          detail={searching && <QueueWarmup elapsedSec={waitedSec} found={found ? foundLeft : null} />}
           action={
             searching ? (
-              <button onClick={cancelSearch} className={secondary}>
+              <button onClick={cancelSearch} disabled={!!found} className={`${secondary} disabled:opacity-40`}>
                 Cancel
               </button>
             ) : (
@@ -233,19 +277,37 @@ export default function Lobby({ streak, standing }: { streak: number; standing: 
 }
 
 /** "1. Ranked" in 600 with its claim in ink-muted beneath; the action on the right. Hairline between rows. */
-function Statement({ n, title, claim, action, live }: { n: number; title: string; claim: ReactNode; action: ReactNode; live?: boolean }) {
+function Statement({
+  n,
+  title,
+  claim,
+  action,
+  live,
+  detail,
+}: {
+  n: number;
+  title: string;
+  claim: ReactNode;
+  action: ReactNode;
+  live?: boolean;
+  /** Full-width content under the row, indented to the title. */
+  detail?: ReactNode;
+}) {
   return (
-    <li className="flex flex-col gap-4 border-b border-hairline py-6 @xl:flex-row @xl:items-center @xl:justify-between @xl:gap-8">
-      <div className="flex min-w-0 gap-3">
-        <span className="w-6 flex-none font-semibold text-ink-muted tabular-nums">{n}.</span>
-        <div className="min-w-0">
-          <h2 className="font-semibold">{title}</h2>
-          <p aria-live={live ? "polite" : undefined} className="text-ink-muted">
-            {claim}
-          </p>
+    <li className="border-b border-hairline py-6">
+      <div className="flex flex-col gap-4 @xl:flex-row @xl:items-center @xl:justify-between @xl:gap-8">
+        <div className="flex min-w-0 gap-3">
+          <span className="w-6 flex-none font-semibold text-ink-muted tabular-nums">{n}.</span>
+          <div className="min-w-0">
+            <h2 className="font-semibold">{title}</h2>
+            <p aria-live={live ? "polite" : undefined} className="text-ink-muted">
+              {claim}
+            </p>
+          </div>
         </div>
+        <div className="flex-none pl-9 @xl:pl-0">{action}</div>
       </div>
-      <div className="flex-none pl-9 @xl:pl-0">{action}</div>
+      {detail && <div className="mt-6 @md:pl-9">{detail}</div>}
     </li>
   );
 }
