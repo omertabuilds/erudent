@@ -193,8 +193,11 @@ export const api = {
     call<void>(sb, "report_question", { p_match: id, p_slot: slot, p_reason: reason }),
   reportPlayer: (sb: SupabaseClient, id: string, reason: string) =>
     call<void>(sb, "report_player", { p_match: id, p_reason: reason }),
-  /** For Axel's leaderboard page. Works signed out. */
-  leaderboard: (sb: SupabaseClient, limit = 100) => call<LeaderboardRow[]>(sb, "get_leaderboard", { p_limit: limit }),
+  /** Top players past placement. tier 1–6 filters; place stays global. Works signed out. */
+  leaderboard: (sb: SupabaseClient, limit = 100, tier: number | null = null) =>
+    call<LeaderboardRow[]>(sb, "get_leaderboard", { p_limit: limit, p_tier: tier }),
+  /** Global place, or null while still in placement. Any case. Works signed out. */
+  playerPlace: (sb: SupabaseClient, username: string) => call<number | null>(sb, "get_player_place", { p_username: username }),
   /** For /u/[username]. Any case. Null if there's no such player. Works signed out. */
   profile: async (sb: SupabaseClient, username: string) =>
     (await call<ProfileSummary[]>(sb, "get_profile", { p_username: username }))[0] ?? null,
