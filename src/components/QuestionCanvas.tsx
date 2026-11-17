@@ -2,22 +2,21 @@
 
 import { useEffect, useRef } from "react";
 
-// /practice's prompt: 21px on 31px.
-const FONT_SIZE = 21;
-const LINE_HEIGHT = 31;
 
 /**
  * Draws the question as an image instead of text, so it can't be
  * copied, selected or pasted into another tool during ranked play.
- * Set in Geist, in ink, at the size /practice uses for its prompt.
+ * Set in Geist Mono, in text, at `size` px on 1.55 line height (the duel's prompt).
  */
-export default function QuestionCanvas({ text }: { text: string }) {
+export default function QuestionCanvas({ text, size = 22 }: { text: string; size?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    const FONT_SIZE = size;
+    const LINE_HEIGHT = Math.round(size * 1.55);
     const canvas = ref.current;
     if (!canvas) return;
-    let ready = false; // nothing is drawn until Geist has loaded
+    let ready = false; // nothing is drawn until Geist Mono has loaded
     let cancelled = false;
 
     const draw = () => {
@@ -26,7 +25,7 @@ export default function QuestionCanvas({ text }: { text: string }) {
       if (!ctx) return;
       const dpr = window.devicePixelRatio || 1;
       const width = canvas.parentElement?.clientWidth ?? 600;
-      // font-ui on the canvas resolves to the Geist family next/font loaded.
+      // font-mono on the canvas resolves to the Geist Mono family next/font loaded.
       const style = getComputedStyle(canvas);
       const font = `${FONT_SIZE}px ${style.fontFamily}`;
       ctx.font = font;
@@ -52,7 +51,7 @@ export default function QuestionCanvas({ text }: { text: string }) {
       canvas.style.height = `${height}px`;
       ctx.scale(dpr, dpr);
       ctx.font = font;
-      ctx.fillStyle = style.color; // text-ink
+      ctx.fillStyle = style.color; // text-text
       ctx.textBaseline = "middle"; // centered in each line box, like the HTML prompt
       lines.forEach((l, i) => ctx.fillText(l, 0, i * LINE_HEIGHT + LINE_HEIGHT / 2));
     };
@@ -78,11 +77,11 @@ export default function QuestionCanvas({ text }: { text: string }) {
       ro.disconnect();
       mo.disconnect();
     };
-  }, [text]);
+  }, [text, size]);
 
   return (
     <div className="w-full select-none" onContextMenu={(e) => e.preventDefault()}>
-      <canvas ref={ref} role="img" aria-label="Question" className="block font-ui text-ink" />
+      <canvas ref={ref} role="img" aria-label="Question" className="block font-mono text-text" />
     </div>
   );
 }
