@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import { requirePlayer } from "@/lib/session";
-import { api, TIER_NAMES, type PracticeStats, type RecentMatch } from "@/lib/erudent";
-import { SiteHeaderView, gutter } from "@/components/SiteHeader";
+import { api, TIER_NAMES, type RecentMatch } from "@/lib/erudent";
+import { SiteHeaderView } from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
-import ProfileBanner from "@/components/ProfileBanner";
+import LobbyBanner from "@/components/LobbyBanner";
 import Lobby from "@/components/Lobby";
-import Reveal from "@/components/landing/Reveal";
-import { caption } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -14,64 +12,65 @@ export const metadata: Metadata = {
   title: "Play — Erudent",
 };
 
-const PLACEMENT = 10;
+const card = "min-w-0 rounded-(--radius-lg) border border-line bg-surface";
+const label = "font-mono text-[11px] tracking-[0.08em] text-text-muted uppercase";
 
-const pct = (n: number, of: number) => (of ? `${Math.round((100 * n) / of)}%` : "—");
-const num = (n: number) => n.toLocaleString("en-US");
-
-/** Sentence-case label for a margin note. Not a kicker: the page keeps one of those. */
-const note = "text-[13px] leading-[18px] font-semibold text-ink-muted";
+const ARENAS = ["Code", "Medicine", "Physics"];
 
 export default async function PlayPage() {
   const { supabase, profile } = await requirePlayer("/play");
-  const [{ data: rank }, stats, recent] = await Promise.all([
+  const [{ data: rank }, place, recent] = await Promise.all([
     supabase.rpc("rank_name", { p_elo: profile.elo, p_matches: profile.matches_played }),
-    api.practiceStats(supabase).catch(() => null),
+    api.playerPlace(supabase, profile.username).catch(() => null),
     api.recentMatches(supabase, profile.username).catch(() => [] as RecentMatch[]),
   ]);
-  const rankName = (rank as string | null) ?? "Unranked";
   // 1–6 once placed; 0 while placement hides the rank ("Unranked").
-  const tier = TIER_NAMES.indexOf(rankName as (typeof TIER_NAMES)[number]) + 1;
-  const placementLeft = Math.max(0, PLACEMENT - profile.matches_played);
-  const lastDuel = recent.find((m) => m.result !== null) ?? null;
-
-  // "N to next rank" is left out: the Elo cut-offs live only in the database (tier_for_elo).
-  const standing =
-    placementLeft > 0 ? (
-      <>
-        <span className="font-semibold text-ink">Unranked.</span> {placementLeft} placement {placementLeft === 1 ? "duel" : "duels"} left.
-      </>
-    ) : (
-      <>
-        <span className="font-semibold text-ink">{rankName}.</span> {num(profile.elo)} Elo.
-      </>
-    );
+  const tier = TIER_NAMES.indexOf(rank as (typeof TIER_NAMES)[number]) + 1;
 
   return (
-    <div className="flex min-h-screen flex-col bg-paper font-ui text-[17px] leading-[26px] text-ink">
-      <noscript>
-        <style>{`.reveal{opacity:1;transform:none}`}</style>
-      </noscript>
-
+    <div className="flex min-h-screen flex-col bg-bg font-ui text-[17px] leading-[26px] text-text">
       <SiteHeaderView state="player" current="play" />
 
-      <main className={`mx-auto w-full max-w-[1312px] flex-[1_0_auto] pt-6 pb-24 md:pt-10 md:pb-32 ${gutter}`}>
-        <h1 className="sr-only">Play</h1>
-        <ProfileBanner player={profile} rank={rankName} editable />
+      <main className="flex-[1_0_auto]">
+        <LobbyBanner player={profile} tier={tier} place={place} />
 
-        <div className="mt-10 grid gap-16 md:mt-14 md:grid-cols-12 md:gap-x-8 lg:gap-x-16">
-          <div className="min-w-0 md:col-span-7">
-            <Lobby streak={stats?.streak ?? 0} standing={standing} />
-            <Reveal className="mt-16 md:mt-24">
-              <Ranks tier={tier} stats={stats} />
-            </Reveal>
+        <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-4 pt-2 pb-16 md:px-10 md:pb-24">
+          <div role="tablist" aria-label="Arena" className="flex flex-wrap gap-1 border-b border-line">
+            <button
+              type="button"
+              role="tab"
+              id="arena-math"
+              aria-selected="true"
+              aria-controls="arena-math-panel"
+              className="-mb-px border-b-2 border-text px-3.5 py-2.5 text-[14px] font-semibold"
+            >
+              Mathematics
+            </button>
+            {ARENAS.map((a) => (
+              <button key={a} type="button" role="tab" aria-selected="false" disabled className="px-3.5 py-2.5 text-[14px] text-[#6e6a62]">
+                {a} <span className="font-mono text-[11px]">SOON</span>
+              </button>
+            ))}
           </div>
 
-          <aside aria-label="Your record" className="flex min-w-0 flex-col gap-10 md:col-span-4 md:col-start-9">
-            {lastDuel && <LastDuel m={lastDuel} />}
-            <PracticeRecord stats={stats} />
-            <p className={`${caption} border-t border-hairline pt-4`}>Math. More subjects later.</p>
-          </aside>
+          <div id="arena-math-panel" role="tabpanel" aria-labelledby="arena-math" className="flex flex-col gap-4">
+            <div className="flex flex-wrap gap-4">
+              <div className="flex min-w-0 flex-[2_1_520px] flex-col [&>section]:flex-1">
+                <Lobby />
+              </div>
+              <RatingCard recent={recent} elo={profile.elo} />
+            </div>
+
+            <section aria-labelledby="mastery-title" className="mt-2">
+              <h2 id="mastery-title" className="font-mono text-[11px] tracking-[0.12em] text-[#6e6a62]">
+                MASTERY
+              </h2>
+              {/* Placeholder: the mastery map lands in its own PR. */}
+              <div className="mt-2 flex aspect-[1200/560] w-full items-center justify-center rounded-(--radius-lg) border border-dashed border-line">
+                <p className="text-[13px] text-text-muted">Your mastery map will appear here.</p>
+              </div>
+            </section>
+          </div>
         </div>
       </main>
 
@@ -80,107 +79,54 @@ export default async function PlayPage() {
   );
 }
 
-const WORD = { win: "Victory", loss: "Defeat", draw: "Draw" } as const;
-const day = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
-
-/** Stated, not celebrated: "Victory, 4–2. +18 ∎" · "Defeat, 1–3. −12". */
-function LastDuel({ m }: { m: RecentMatch }) {
-  const d = m.elo_after === null ? null : m.elo_after - m.elo_before;
-  return (
-    <div className="border-t border-hairline pt-4">
-      <p className={note}>Last duel</p>
-      <p className="mt-2 font-semibold tabular-nums">
-        {WORD[m.result!]}
-        {m.opponent_score !== null && `, ${m.score}–${m.opponent_score}`}.{" "}
-        {m.mode === "friend" ? (
-          <span className="font-normal text-ink-muted">Unrated.</span>
-        ) : d === null ? null : d > 0 ? (
-          <span className="text-pencil">
-            +{d}
-            <span className="sr-only"> Elo</span> ∎
-          </span>
-        ) : (
-          <span className="text-ink-muted">
-            {d < 0 ? `−${-d}` : "±0"}
-            <span className="sr-only"> Elo</span>
-          </span>
-        )}
-      </p>
-      <p className={caption}>
-        {m.opponent ? `Against @${m.opponent} · ` : ""}
-        <time dateTime={m.finished_at}>{day.format(new Date(m.finished_at))}</time>
-      </p>
-    </div>
-  );
-}
-
-function PracticeRecord({ stats }: { stats: PracticeStats | null }) {
-  const attempted = stats?.attempted ?? 0;
-  const rows: [string, string][] = [
-    ["Attempted", num(attempted)],
-    ["Accuracy", pct(stats?.correct ?? 0, attempted)],
-    ["Best streak", num(stats?.best_streak ?? 0)],
-  ];
-  return (
-    <div className="border-t border-hairline pt-4">
-      <p className={note}>Practice record</p>
-      <dl className="mt-2">
-        {rows.map(([k, v]) => (
-          <div key={k} className="flex items-baseline justify-between border-b border-hairline py-2 last:border-b-0">
-            <dt className="text-[15px] text-ink-muted">{k}</dt>
-            <dd className="text-[15px] font-semibold tabular-nums">{v}</dd>
-          </div>
-        ))}
-      </dl>
-    </div>
-  );
-}
+const DAY = 24 * 60 * 60 * 1000;
 
 /**
- * The six ranks on one thin vertical rule, Erudite at the head, one tick each.
- * Your rank in ink 800; the rest ink-muted. Each carries your practice accuracy at that tier.
+ * Elo over the last 30 days, from rated duels (ranked and async; friend games don't move Elo).
+ * Built from the recent-duels feed, so it covers at most the last 10 finished duels.
  */
-function Ranks({ tier, stats }: { tier: number; stats: PracticeStats | null }) {
-  // TODO: per-topic mastery (a tick per topic within each rank) needs a per-topic stats RPC.
-  const byTier = new Map((stats?.by_tier ?? []).map((t) => [t.tier, t]));
+function RatingCard({ recent, elo }: { recent: RecentMatch[]; elo: number }) {
+  // Server-rendered per request (force-dynamic), so "now" is the request time.
+  const since = Date.now() - 30 * DAY;
+  const rated = recent
+    .filter((m) => m.mode !== "friend" && m.elo_after !== null && new Date(m.finished_at).getTime() >= since)
+    .sort((a, b) => a.finished_at.localeCompare(b.finished_at));
+  const series = rated.length ? [rated[0].elo_before, ...rated.map((m) => m.elo_after!)] : [];
+  const delta = series.length ? elo - series[0] : 0;
+
+  const W = 300;
+  const H = 56;
+  const lo = Math.min(...series);
+  const span = Math.max(...series) - lo || 1;
+  const pts = series.map((v, i) => [(i / Math.max(1, series.length - 1)) * W, H - 8 - ((v - lo) / span) * (H - 16)] as const);
+  const signed = delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : "±0";
 
   return (
-    <section aria-labelledby="ranks-title" className="border-t border-hairline pt-6">
-      <h2 id="ranks-title" className="font-semibold">
-        The ranks
-      </h2>
-
-      {/* DOM order climbs from Novice; flex-col-reverse draws Erudite on top. */}
-      <ol className="mt-6 ml-1 flex max-w-[360px] flex-col-reverse border-l border-rule">
-        {TIER_NAMES.map((name, i) => {
-          const n = i + 1;
-          const current = n === tier;
-          const t = byTier.get(n);
-          return (
-            <li key={name} className="relative flex items-baseline justify-between gap-6 py-2.5 pl-7">
-              <span aria-hidden="true" className={`absolute top-1/2 left-0 h-px ${current ? "w-5 bg-ink" : "w-3 bg-rule"}`} />
-              <span className={current ? "font-extrabold text-ink" : "text-ink-muted"}>
-                {name}
-                {n === TIER_NAMES.length && tier >= n && (
-                  <span className="ml-2 text-pencil" aria-hidden="true">
-                    ∎
-                  </span>
-                )}
-                {current && <span className="sr-only"> (your rank)</span>}
-              </span>
-              <span className="text-[15px] text-ink-muted tabular-nums">
-                <span className="sr-only">Practice accuracy </span>
-                {t?.attempted ? pct(t.correct, t.attempted) : "—"}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
-
-      <p className={`${caption} mt-4 max-w-[360px]`}>
-        {tier === 0 ? "Your rank is set after ten ranked duels. " : ""}
-        Practice accuracy at each rank. Per-topic mastery is coming.
-      </p>
+    <section aria-labelledby="rating-title" className={`${card} flex flex-[1_1_300px] flex-col gap-2.5 px-5 py-[18px]`}>
+      <div className="flex items-baseline justify-between">
+        <h2 id="rating-title" className={label}>
+          Rating · 30D
+        </h2>
+        {series.length > 1 && (
+          <span className={`font-mono text-[12px] tabular-nums ${delta > 0 ? "text-[var(--rank-2-text)]" : "text-text-muted"}`}>{signed}</span>
+        )}
+      </div>
+      {series.length > 1 ? (
+        <svg role="img" aria-label={`Elo trend, ${signed} over 30 days`} viewBox={`0 0 ${W} ${H}`} className="h-14 w-full overflow-visible">
+          <polyline
+            points={pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ")}
+            fill="none"
+            stroke="var(--text)"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+          <circle cx={pts.at(-1)![0]} cy={pts.at(-1)![1]} r="2.5" fill="var(--text)" />
+        </svg>
+      ) : (
+        <p className="flex h-14 items-center text-[13px] text-text-muted">No rated duels in the last 30 days.</p>
+      )}
     </section>
   );
 }

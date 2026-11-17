@@ -1,23 +1,33 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { api, friendlyError } from "@/lib/erudent";
-import { quiet, secondary } from "@/components/ui";
 import QueueWarmup from "@/components/QueueWarmup";
 
 const POLL_MS = 2000;
 /** How long "Opponent found" shows before the match opens. Matches start 5 s after they're made. */
 const FOUND_HOLD_MS = 3000;
 
+const card = "min-w-0 rounded-(--radius-lg) border border-line bg-surface";
+const primary =
+  "inline-flex h-11 flex-none cursor-pointer items-center rounded-(--radius-md) bg-text px-[26px] text-[15px] font-semibold text-bg hover:bg-text/90 disabled:cursor-default disabled:opacity-40";
+const outline =
+  "inline-flex h-11 flex-none cursor-pointer items-center rounded-(--radius-md) border border-[#2c2c33] px-[18px] text-[15px] font-medium text-text hover:border-text-muted disabled:cursor-default disabled:opacity-40";
+const quiet = "inline-flex min-h-11 cursor-pointer items-center text-[14px] text-text-muted hover:text-text disabled:cursor-default disabled:opacity-40";
+const segment =
+  "h-[30px] cursor-pointer rounded-[6px] px-3.5 text-[13px] font-medium text-text-muted aria-pressed:bg-text aria-pressed:text-bg disabled:cursor-default";
+const mono = "font-mono text-[12px] tracking-[0.04em] text-text-muted uppercase";
+
+const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+
 /**
- * The page's one primary button with the rank sentence beside it, then three numbered statements:
- * Ranked, Practice, Play a friend. Searching and friend-waiting live inline in their rows.
- * `standing` is the rank sentence set beside the button ("Scholar. 1,142 Elo.").
+ * The play card. Ranked: Find match runs the ranked queue (searching, then "Match found").
+ * Unranked: friend games, the only unrated duel there is: create a code or join one.
  */
-export default function Lobby({ streak, standing }: { streak: number; standing: ReactNode }) {
+export default function Lobby() {
   const router = useRouter();
   const sb = useRef(createClient()).current;
   const [searching, setSearching] = useState(false);
@@ -29,6 +39,7 @@ export default function Lobby({ streak, standing }: { streak: number; standing: 
   const [joinCode, setJoinCode] = useState("");
   const [copied, setCopied] = useState<"link" | "code" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"ranked" | "unranked">("ranked");
   const queuedAt = useRef(0);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -148,166 +159,112 @@ export default function Lobby({ streak, standing }: { streak: number; standing: 
 
   const inviteLink = friendCode ? `${typeof window !== "undefined" ? window.location.origin : ""}/join/${friendCode.code}` : "";
 
+  // The switch locks while you're queued or holding a friend code, so neither is left running unseen.
+  const locked = searching || !!friendCode;
+  const ranked = mode === "ranked";
+
   return (
-    <>
-      <section aria-label="Ranked">
-        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-8">
-          <button
-            onClick={startSearch}
-            disabled={searching}
-            className="inline-flex h-14 flex-none items-center rounded-(--r-md) bg-ink px-8 text-[17px] font-bold text-on-ink disabled:opacity-40 max-sm:w-full max-sm:justify-center"
-          >
-            {found ? "Match found" : searching ? "Searching…" : "Play ranked"}
-          </button>
-          <p className="text-[19px] leading-[29px] text-ink-muted tabular-nums">{standing}</p>
+    <section aria-labelledby="play-title" className={`${card} flex flex-col gap-[18px] px-5 py-5 md:px-6 md:py-[22px]`}>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 id="play-title" className="text-[24px] leading-tight font-semibold tracking-[-0.035em]">
+            {ranked ? "Ranked duel" : "Unranked duel"}
+          </h2>
+          <p className={`${mono} mt-1`}>3 questions · 5:00 · {ranked ? "Elo at stake" : "No rating change"}</p>
         </div>
-      </section>
+        <div className="flex gap-1 rounded-(--radius-md) border border-line bg-bg p-[3px]" role="group" aria-label="Duel type">
+          <button type="button" className={segment} aria-pressed={ranked} disabled={locked && !ranked} onClick={() => setMode("ranked")}>
+            Ranked
+          </button>
+          <button type="button" className={segment} aria-pressed={!ranked} disabled={locked && ranked} onClick={() => setMode("unranked")}>
+            Unranked
+          </button>
+        </div>
+      </div>
 
-      <ol aria-label="Ways to play" className="@container mt-16 border-t border-hairline md:mt-20">
-        <Statement
-          n={1}
-          title="Ranked"
-          live
-          claim={
-            found ? (
-              <>
-                Opponent found. Starting in <span className="tabular-nums">{Math.max(1, foundLeft)}</span>…
-              </>
-            ) : searching ? (
-              <>
-                Finding an opponent…
-                <span className="block">
-                  {waitedSec < 15 ? "Looking near your rating" : waitedSec < 30 ? "Widening the search" : "Matching you with a recorded run"}
-                </span>
-              </>
-            ) : (
-              "Three problems, five minutes, focus mode."
-            )
-          }
-          detail={searching && <QueueWarmup elapsedSec={waitedSec} found={found ? foundLeft : null} />}
-          action={
-            searching ? (
-              <button onClick={cancelSearch} disabled={!!found} className={`${secondary} disabled:opacity-40`}>
-                Cancel
+      <div className="flex flex-wrap items-center gap-4">
+        {ranked ? (
+          searching ? (
+            <div className="flex flex-wrap items-center gap-3.5">
+              <p
+                aria-live="polite"
+                className="flex h-11 items-center gap-2.5 rounded-(--radius-md) border border-[#2c2c33] px-[18px] font-mono text-[13px] tabular-nums"
+              >
+                <span aria-hidden="true" className="size-[7px] rounded-full bg-accent" />
+                {found ? `MATCH FOUND · STARTING IN ${Math.max(1, foundLeft)}` : `SEARCHING · ${clock(waitedSec)}`}
+              </p>
+              {!found && (
+                <button type="button" onClick={cancelSearch} className={quiet}>
+                  Cancel
+                </button>
+              )}
+            </div>
+          ) : (
+            <button type="button" onClick={startSearch} className={primary}>
+              Find match
+            </button>
+          )
+        ) : friendCode ? (
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2" aria-live="polite">
+            <p className="font-mono text-[28px] leading-none font-semibold tracking-[0.12em] tabular-nums">
+              <span className="sr-only">Your code </span>
+              {friendCode.code}
+            </p>
+            <button type="button" onClick={() => copy("link", inviteLink)} className={quiet}>
+              {copied === "link" ? "Link copied" : "Copy link"}
+            </button>
+            <button type="button" onClick={() => copy("code", friendCode.code)} className={quiet}>
+              {copied === "code" ? "Code copied" : "Copy code"}
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={createFriend} className={primary}>
+              Create a game
+            </button>
+            <form onSubmit={joinFriend} className="flex gap-2">
+              <input
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                maxLength={6}
+                placeholder="Code"
+                aria-label="Friend's code"
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                className="h-11 w-[7.5rem] min-w-0 rounded-(--radius-md) border border-line bg-bg px-3.5 font-mono text-[15px] tracking-[0.12em] text-text uppercase tabular-nums placeholder:font-sans placeholder:tracking-normal placeholder:text-text-muted placeholder:normal-case"
+              />
+              <button disabled={joinCode.length !== 6} className={outline}>
+                Join
               </button>
-            ) : (
-              <Link href="/rules" className={quiet}>
-                The rules →
-              </Link>
-            )
-          }
-        />
+            </form>
+          </div>
+        )}
 
-        <Statement
-          n={2}
-          title="Practice"
-          claim={
-            <>
-              Endless and unranked. Streak <span className="font-semibold text-ink tabular-nums">{streak}</span>.
-            </>
-          }
-          action={
-            <Link href="/practice" className={secondary}>
-              Practice
-            </Link>
-          }
-        />
+        <Link href="/practice" className="ml-auto inline-flex min-h-11 items-center text-[13px] text-text-muted hover:text-text">
+          Infinite practice →
+        </Link>
+      </div>
 
-        <Statement
-          n={3}
-          title="Play a friend"
-          live
-          claim={
-            friendCode ? (
-              <>
-                <span className="mt-2 block text-[44px] leading-[1] font-extrabold tracking-[0.12em] break-all text-ink tabular-nums">
-                  <span className="sr-only">Your code </span>
-                  {friendCode.code}
-                </span>
-                <span className="mt-3 block">Waiting for your friend. Friend games don&apos;t change your rating.</span>
-              </>
-            ) : (
-              "Unrated. Send a code, or enter one."
-            )
-          }
-          action={
-            friendCode ? (
-              <div className="flex flex-wrap gap-x-5">
-                <button onClick={() => copy("link", inviteLink)} className={quiet}>
-                  {copied === "link" ? "Link copied" : "Copy link"}
-                </button>
-                <button onClick={() => copy("code", friendCode.code)} className={quiet}>
-                  {copied === "code" ? "Code copied" : "Copy code"}
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                <button onClick={createFriend} className={secondary}>
-                  Create a game
-                </button>
-                <form onSubmit={joinFriend} className="flex gap-2">
-                  <input
-                    value={joinCode}
-                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                    maxLength={6}
-                    placeholder="Code"
-                    aria-label="Friend's code"
-                    autoComplete="off"
-                    autoCapitalize="characters"
-                    spellCheck={false}
-                    className="h-11 w-[8.5rem] min-w-0 rounded-(--r-md) border border-hairline bg-sunken px-4 text-[17px] font-semibold tracking-[0.12em] text-ink uppercase tabular-nums placeholder:font-normal placeholder:tracking-normal placeholder:text-ink-muted placeholder:normal-case"
-                  />
-                  <button disabled={joinCode.length !== 6} className={`${secondary} flex-none disabled:opacity-40`}>
-                    Join
-                  </button>
-                </form>
-              </div>
-            )
-          }
-        />
-      </ol>
+      {ranked && searching && !found && (
+        <p className="-mt-2 text-[13px] text-text-muted">
+          {waitedSec < 15 ? "Looking near your rating." : waitedSec < 30 ? "Widening the search." : "Matching you with a recorded run."}
+        </p>
+      )}
+      {!ranked && friendCode && (
+        <p className="-mt-2 text-[13px] text-text-muted">Waiting for your friend. Send the link or the code.</p>
+      )}
+      {ranked && searching && (
+        <div className="border-t border-line pt-5">
+          <QueueWarmup elapsedSec={waitedSec} found={found ? foundLeft : null} />
+        </div>
+      )}
 
       {error && (
-        <p role="alert" className="mt-4 text-[15px] leading-[22px]">
+        <p role="alert" className="text-[14px] font-medium text-accent-text">
           {error}
         </p>
       )}
-    </>
-  );
-}
-
-/** "1. Ranked" in 600 with its claim in ink-muted beneath; the action on the right. Hairline between rows. */
-function Statement({
-  n,
-  title,
-  claim,
-  action,
-  live,
-  detail,
-}: {
-  n: number;
-  title: string;
-  claim: ReactNode;
-  action: ReactNode;
-  live?: boolean;
-  /** Full-width content under the row, indented to the title. */
-  detail?: ReactNode;
-}) {
-  return (
-    <li className="border-b border-hairline py-6">
-      <div className="flex flex-col gap-4 @xl:flex-row @xl:items-center @xl:justify-between @xl:gap-8">
-        <div className="flex min-w-0 gap-3">
-          <span className="w-6 flex-none font-semibold text-ink-muted tabular-nums">{n}.</span>
-          <div className="min-w-0">
-            <h2 className="font-semibold">{title}</h2>
-            <p aria-live={live ? "polite" : undefined} className="text-ink-muted">
-              {claim}
-            </p>
-          </div>
-        </div>
-        <div className="flex-none pl-9 @xl:pl-0">{action}</div>
-      </div>
-      {detail && <div className="mt-6 @md:pl-9">{detail}</div>}
-    </li>
+    </section>
   );
 }
