@@ -1,71 +1,123 @@
-/* Erudent — generated from tokens.json */
+/* Erudent design system tokens (Design System artifact, project/tokens.json v1).
+   The first block in each theme is the system. "Aliases" keep the older names used
+   across the pages pointing at it, so markup did not need to change. */
+
 :root, [data-theme="dark"] {
-  --paper: #0f0f0e;
-  --surface: #181816;
-  --sunken: #0a0a09;
-  --hairline: #2c2b28;
-  --rule: #73716a;
-  --ink: #ecebe6;
-  --on-ink: #0f0f0e;
-  --ink-muted: #a3a19a;
-  --pencil: #ec5a3f;
-  --rank-1: #9aa8b8;
-  --rank-2: #4fbfb0;
-  --rank-3: #7fa8f0;
-  --rank-4: #b39af2;
-  --rank-5: #8fbf7a;
-  --rank-6: #d9b45a;
-  --focus: var(--ink);
-  --shadow-float: 0 1px 2px rgb(0 0 0 / 0.2), 0 18px 40px -18px rgb(0 0 0 / 0.55);
+  --bg: #0b0b0d;
+  --surface: #0f0f12;
+  --surface-raised: #1f1f24;
+  --line: #1a1a1f;
+  --text: #f2efe8;
+  --text-muted: #a09c92;
+  --accent: #d42b20;
+  --accent-text: #ff6a5c;
+  --on-accent: #ffffff;
+  --rival: #7b97ff;
+  --streak: #f0c24b;
+
+  /* Ranks I–VI: Novice, Apprentice, Scholar, Savant, Sage, Erudite. Ring and badge stroke. */
+  --rank-1: #8c8a84;
+  --rank-2: #7fb7a4;
+  --rank-3: #7b97ff;
+  --rank-4: #c58bff;
+  --rank-5: #f2917f;
+  --rank-6: #f0c24b;
+  /* Handle and rank-name text. */
+  --rank-1-text: #a8a59d;
+  --rank-2-text: #8fd0ba;
+  --rank-3-text: #9fb4ff;
+  --rank-4-text: #d4b0ff;
+  --rank-5-text: #f6a798;
+  --rank-6-text: #f0c24b;
+
+  --lift: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
+
 [data-theme="light"] {
-  --paper: #f4f3ef;
-  --surface: #ffffff;
-  --sunken: #eae8e1;
-  --hairline: #dcd9d0;
-  --rule: #87847b;
-  --ink: #141413;
-  --on-ink: #f4f3ef;
-  --ink-muted: #5c5a53;
-  --pencil: #b8311b;
-  --rank-1: #4f5e6e;
-  --rank-2: #12756a;
-  --rank-3: #2f5fc4;
-  --rank-4: #6c4bc2;
-  --rank-5: #43702f;
-  --rank-6: #83600f;
-  --focus: var(--ink);
-  --shadow-float: 0 1px 2px rgb(20 20 19 / 0.05), 0 18px 40px -18px rgb(20 20 19 / 0.16);
+  --bg: #f4f1ea;
+  --surface: #ebe7dd;
+  --surface-raised: #ffffff;
+  --line: #d3cec1;
+  --text: #121214;
+  --text-muted: #5d594f;
+  --accent: #d42b20;
+  --accent-text: #b71f15;
+  --on-accent: #ffffff;
+  --rival: #2b48c4;
+  --streak: #8a6200;
+
+  --rank-1: #6b685f;
+  --rank-2: #2d6f5a;
+  --rank-3: #2b48c4;
+  --rank-4: #7a35c4;
+  --rank-5: #b5452f;
+  --rank-6: #8a6200;
+  --rank-1-text: #6b685f;
+  --rank-2-text: #2d6f5a;
+  --rank-3-text: #2b48c4;
+  --rank-4-text: #7a35c4;
+  --rank-5-text: #b5452f;
+  --rank-6-text: #8a6200;
+
+  --lift: 0 12px 28px rgba(18, 18, 20, 0.12);
 }
+
 :root {
+  /* Aliases (older names) */
+  --paper: var(--bg);
+  --sunken: var(--surface-raised);
+  --hairline: var(--line);
+  --rule: color-mix(in oklab, var(--text-muted) 55%, var(--bg));
+  --ink: var(--text);
+  --on-ink: var(--bg);
+  --ink-muted: var(--text-muted);
+  --pencil: var(--accent-text);
+  --focus: var(--text);
+  --shadow-float: var(--lift);
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-6: 24px;
   --space-8: 32px;
+  --space-12: 48px;
   --space-16: 64px;
   --space-32: 128px;
+
+  --radius-sm: 4px;   /* badges, tags */
+  --radius-md: 8px;   /* buttons, inputs */
+  --radius-lg: 10px;  /* cards, panels */
+  --radius-xl: 12px;  /* large media, avatar frames */
+  --radius-pill: 999px;
   --radius-none: 0px;
   --radius-full: 9999px;
-  --r-sm: 10px;
-  --r-md: 16px;
-  --r-pill: 999px;
-  --font-display: "Bodoni Moda", Didot, "Bodoni 72", Georgia, serif;
-  --font-serif: "Source Serif 4", "Source Serif Pro", Georgia, serif;
-  --font-sans: "Source Sans 3", "Source Sans Pro", "Helvetica Neue", Arial, sans-serif;
+  /* Aliases (older names) */
+  --r-sm: var(--radius-lg);
+  --r-md: var(--radius-md);
+  --r-pill: var(--radius-pill);
+
+  /* Geist and Geist Mono, loaded in layout.tsx */
+  --font-sans: var(--font-geist), "Geist", system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
+  /* Aliases (older names) */
+  --font-display: var(--font-sans);
+  --font-serif: var(--font-sans);
 }
-.display-xl { font-family: var(--font-display); font-size: 88px; line-height: 88px; font-weight: 400; letter-spacing: -0.02em; }
-.display { font-family: var(--font-display); font-size: 56px; line-height: 60px; font-weight: 400; letter-spacing: -0.015em; }
-.title { font-family: var(--font-display); font-size: 34px; line-height: 40px; font-weight: 400; letter-spacing: -0.01em; }
-.heading { font-family: var(--font-display); font-size: 24px; line-height: 30px; font-weight: 500; }
-.body-lg { font-family: var(--font-serif); font-size: 20px; line-height: 31px; font-weight: 400; }
-.body { font-family: var(--font-serif); font-size: 17px; line-height: 27px; font-weight: 400; }
-.body-sm { font-family: var(--font-serif); font-size: 15px; line-height: 23px; font-weight: 400; }
-.eyebrow { font-family: var(--font-serif); font-size: 15px; line-height: 20px; font-weight: 500; letter-spacing: 0.08em; }
-.theorem { font-family: var(--font-serif); font-size: 17px; line-height: 27px; font-weight: 400; }
-.label { font-family: var(--font-sans); font-size: 14px; line-height: 18px; font-weight: 600; letter-spacing: 0.01em; }
+
+/* Type classes: sizes unchanged so layouts hold; families follow the system
+   (Geist for text, Geist Mono for numbers that matter). */
+.display-xl { font-family: var(--font-sans); font-size: 88px; line-height: 88px; font-weight: 600; letter-spacing: -0.045em; }
+.display { font-family: var(--font-sans); font-size: 56px; line-height: 60px; font-weight: 600; letter-spacing: -0.045em; }
+.title { font-family: var(--font-sans); font-size: 34px; line-height: 40px; font-weight: 600; letter-spacing: -0.02em; }
+.heading { font-family: var(--font-sans); font-size: 24px; line-height: 30px; font-weight: 600; letter-spacing: -0.01em; }
+.body-lg { font-family: var(--font-sans); font-size: 20px; line-height: 31px; font-weight: 400; }
+.body { font-family: var(--font-sans); font-size: 17px; line-height: 27px; font-weight: 400; }
+.body-sm { font-family: var(--font-sans); font-size: 15px; line-height: 23px; font-weight: 400; }
+.eyebrow { font-family: var(--font-mono); font-size: 15px; line-height: 20px; font-weight: 500; letter-spacing: 0.12em; }
+.theorem { font-family: var(--font-mono); font-size: 17px; line-height: 27px; font-weight: 400; }
+.label { font-family: var(--font-sans); font-size: 14px; line-height: 18px; font-weight: 600; letter-spacing: 0.04em; }
 .caption { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 400; }
-.score { font-family: var(--font-display); font-size: 48px; line-height: 52px; font-weight: 400; }
-.timer { font-family: var(--font-serif); font-size: 28px; line-height: 32px; font-weight: 500; }
-.numeric { font-family: var(--font-serif); font-size: 15px; line-height: 23px; font-weight: 500; }
+.score { font-family: var(--font-mono); font-size: 48px; line-height: 52px; font-weight: 600; }
+.timer { font-family: var(--font-mono); font-size: 28px; line-height: 32px; font-weight: 600; }
+.numeric { font-family: var(--font-mono); font-size: 15px; line-height: 23px; font-weight: 500; }
