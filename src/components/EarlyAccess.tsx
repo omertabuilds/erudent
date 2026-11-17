@@ -27,15 +27,15 @@ function maskCode(v: string) {
   return c.length > 4 ? `${c.slice(0, 4)}-${c.slice(4)}` : c;
 }
 
+const row = "mt-3 flex w-full gap-2";
 const field =
-  "h-[60px] min-w-0 flex-[1_1_240px] rounded-(--r-md) border border-rule bg-sunken px-[18px] font-ui leading-normal text-ink placeholder:text-ink-muted placeholder:opacity-100";
+  "h-[46px] min-w-0 flex-1 rounded-(--radius-md) border border-[#33333a] bg-surface/85 px-3.5 text-[15px] leading-normal text-text placeholder:text-[#8a867d] placeholder:opacity-100 hover:border-text-muted aria-invalid:border-accent-text";
 const primary =
-  "h-[60px] flex-none cursor-pointer rounded-(--r-md) bg-ink max-sm:flex-auto px-7 font-ui text-[17px] leading-normal font-bold text-on-ink shadow-[inset_0_-4px_0_var(--rule)] active:translate-y-[3px] active:shadow-[inset_0_-1px_0_var(--rule)] disabled:cursor-wait";
-const tabButton =
-  "min-h-11 flex-1 basis-0 cursor-pointer rounded-(--r-sm) bg-transparent px-4 font-ui text-[15px] leading-none font-semibold text-ink aria-pressed:bg-ink aria-pressed:text-on-ink";
-const note = "mt-3 text-[13px] leading-5 text-ink-muted";
-const errorText = "mt-[10px] text-[14px] font-semibold text-pencil";
-const done = "mt-5 text-[19px] leading-[29px]";
+  "h-[46px] flex-none cursor-pointer rounded-(--radius-md) bg-text px-[18px] text-[15px] font-semibold text-bg hover:bg-text/90 disabled:cursor-wait disabled:opacity-60";
+const toggle =
+  "mt-1 inline-flex min-h-11 cursor-pointer items-center text-[14px] text-[#d6d2c9] underline underline-offset-4 hover:text-text";
+const errorText = "mt-2 text-[14px] font-medium text-accent-text";
+const done = "mt-3 text-[17px] leading-[26px]";
 
 /** Early-access entry: join the waitlist, or bring an invitation code. */
 export default function EarlyAccess({
@@ -48,8 +48,7 @@ export default function EarlyAccess({
   /** Set on one box per page: it gets this id and answers "Enter code". */
   anchorId?: string;
 }) {
-  // Unique per instance: the landing page renders this box twice.
-  const id = useId();
+    const id = useId();
   const [tab, setTab] = useState<"wait" | "code">(redeemError || needsCode ? "code" : "wait");
 
   const [email, setEmail] = useState("");
@@ -112,113 +111,102 @@ export default function EarlyAccess({
     }
   }
 
+  // Switching modes moves focus to the new field so keyboard users land where they type.
+  const emailInput = useRef<HTMLInputElement>(null);
+  function switchTo(next: "wait" | "code") {
+    setTab(next);
+    requestAnimationFrame(() => (next === "code" ? codeInput : emailInput).current?.focus());
+  }
+
   return (
-    <div id={anchorId} className="mt-10 w-full max-w-[520px] scroll-mt-4 text-left">
+    <div id={anchorId} className="mt-[34px] w-full max-w-[440px] scroll-mt-4">
       {needsCode && (
-        <p className="mb-4 text-[17px] leading-[26px] font-semibold text-ink" role="status">
+        <p className="mb-3 text-[15px] leading-[22px] font-medium text-text" role="status">
           You need an invite code to play. Enter it below or join the waitlist.
         </p>
       )}
-      <div className="flex gap-1 rounded-(--r-md) border border-rule p-1" role="group" aria-label="Choose how to get in">
-        <button type="button" className={tabButton} aria-pressed={tab === "wait"} onClick={() => setTab("wait")}>
-          Join the waitlist
-        </button>
-        <button
-          type="button"
-          className={tabButton}
-          aria-pressed={tab === "code"}
-          onClick={() => setTab("code")}
-        >
-          I have a code
-        </button>
-      </div>
 
       {tab === "wait" ? (
-        <section>
-          {joined ? (
-            <p className={done} role="status">
-              You&apos;re on the list. We&apos;ll send your code to {joined}. <span className="text-pencil">∎</span>
-            </p>
-          ) : (
-            <>
-              <form className="mt-4 flex flex-wrap gap-[10px]" onSubmit={joinWaitlist} noValidate>
-                <label htmlFor={`${id}-email`} className="sr-only">
-                  Email address
-                </label>
-                <input
-                  id={`${id}-email`}
-                  className={`${field} text-[18px] font-normal`}
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@school.edu"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setWaitError(null);
-                  }}
-                  aria-invalid={waitError ? true : undefined}
-                  aria-describedby={waitError ? `${id}-err-wait ${id}-note-wait` : `${id}-note-wait`}
-                />
-                <button className={primary} type="submit" disabled={waitBusy}>
-                  Get a code
-                </button>
-              </form>
-              {waitError && (
-                <p id={`${id}-err-wait`} className={errorText} role="alert">
-                  {waitError}
-                </p>
-              )}
-              <p id={`${id}-note-wait`} className={note}>
-                One email when your code is ready. Nothing else.
+        joined ? (
+          <p className={done} role="status">
+            You&apos;re on the list. We&apos;ll send your code to {joined}. <span className="text-accent-text">∎</span>
+          </p>
+        ) : (
+          <>
+            <form className={row} onSubmit={joinWaitlist} noValidate>
+              <label htmlFor={`${id}-email`} className="sr-only">
+                Email address
+              </label>
+              <input
+                id={`${id}-email`}
+                ref={emailInput}
+                className={field}
+                type="email"
+                autoComplete="email"
+                placeholder="you@school.edu"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setWaitError(null);
+                }}
+                aria-invalid={waitError ? true : undefined}
+                aria-describedby={waitError ? `${id}-err-wait` : undefined}
+              />
+              <button className={primary} type="submit" disabled={waitBusy}>
+                Join waitlist
+              </button>
+            </form>
+            {waitError && (
+              <p id={`${id}-err-wait`} className={errorText} role="alert">
+                {waitError}
               </p>
-            </>
-          )}
-        </section>
+            )}
+            <button type="button" className={toggle} onClick={() => switchTo("code")}>
+              Have an invite code?
+            </button>
+          </>
+        )
+      ) : accepted ? (
+        <p className={done} role="status">
+          Code accepted. Your first duel is waiting. <span className="text-accent-text">∎</span>
+        </p>
       ) : (
-        <section>
-          {accepted ? (
-            <p className={done} role="status">
-              Code accepted. Your first duel is waiting. <span className="text-pencil">∎</span>
+        <>
+          <form className={row} onSubmit={enterCode} noValidate>
+            <label htmlFor={`${id}-code`} className="sr-only">
+              Invite code
+            </label>
+            <input
+              id={`${id}-code`}
+              ref={codeInput}
+              className={`${field} font-mono tracking-[.12em] uppercase tabular-nums`}
+              type="text"
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              maxLength={9}
+              placeholder="XXXX-XXXX"
+              value={code}
+              onChange={(e) => {
+                setCode(maskCode(e.target.value));
+                setCodeError(null);
+              }}
+              aria-invalid={codeError ? true : undefined}
+              aria-describedby={codeError ? `${id}-err-code` : undefined}
+            />
+            <button className={primary} type="submit" disabled={codeBusy}>
+              Enter
+            </button>
+          </form>
+          {codeError && (
+            <p id={`${id}-err-code`} className={errorText} role="alert">
+              {codeError}
             </p>
-          ) : (
-            <>
-              <form className="mt-4 flex flex-wrap gap-[10px]" onSubmit={enterCode} noValidate>
-                <label htmlFor={`${id}-code`} className="sr-only">
-                  Invitation code
-                </label>
-                <input
-                  id={`${id}-code`}
-                  ref={codeInput}
-                  className={`${field} text-[20px] font-semibold tracking-[.12em] uppercase tabular-nums`}
-                  type="text"
-                  autoComplete="off"
-                  autoCapitalize="characters"
-                  spellCheck={false}
-                  maxLength={9}
-                  placeholder="XXXX-XXXX"
-                  value={code}
-                  onChange={(e) => {
-                    setCode(maskCode(e.target.value));
-                    setCodeError(null);
-                  }}
-                  aria-invalid={codeError ? true : undefined}
-                  aria-describedby={codeError ? `${id}-err-code ${id}-note-code` : `${id}-note-code`}
-                />
-                <button className={primary} type="submit" disabled={codeBusy}>
-                  Enter
-                </button>
-              </form>
-              {codeError && (
-                <p id={`${id}-err-code`} className={errorText} role="alert">
-                  {codeError}
-                </p>
-              )}
-              <p id={`${id}-note-code`} className={note}>
-                Codes are single-use and tied to one account.
-              </p>
-            </>
           )}
-        </section>
+          <button type="button" className={toggle} onClick={() => switchTo("wait")}>
+            Join the waitlist instead
+          </button>
+        </>
       )}
     </div>
   );

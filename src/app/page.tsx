@@ -1,32 +1,41 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import EarlyAccess, { ENTER_CODE_ANCHOR, type RedeemError } from "@/components/EarlyAccess";
-import SiteHeader, { gutter } from "@/components/SiteHeader";
-import SiteFooter from "@/components/SiteFooter";
-import Climb from "@/components/landing/Climb";
-import Reveal from "@/components/landing/Reveal";
-import SmoothScroll from "@/components/landing/SmoothScroll";
+import { createClient } from "@/lib/supabase/server";
+import { api } from "@/lib/erudent";
 
 export const metadata: Metadata = {
   title: "Erudent — early access",
 };
 
-const RANKS = ["Novice", "Apprentice", "Scholar", "Savant", "Sage", "Erudite"];
+const edge = "px-4 md:px-12";
+const navLink = "inline-flex min-h-11 items-center text-[15px] font-medium text-text-muted hover:text-text";
 
-const STEPS = [
-  { n: "1", title: "Three problems", body: "A, B and C, worth 1, 2 and 3 points. Your opponent gets the same three." },
-  { n: "2", title: "Five minutes", body: "One try per question. All or nothing." },
-  { n: "3", title: "Climb six ranks", body: "Wins move your Elo. Your Elo sets your rank, from Novice to Erudite." },
-];
-
-const h2 = "text-[clamp(36px,5vw,56px)] leading-[1] font-extrabold tracking-[-0.03em]";
-
-/** A section on the 1200px grid. The id sits outside Reveal so anchors land on the untransformed box. */
-function Section({ id, children }: { id?: string; children: ReactNode }) {
+/** Sign in for visitors; Play for players; Sign out for an account without a code (the code field is right below). */
+async function NavAction() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return (
+      <Link href="/login?next=/play" className={navLink}>
+        Sign in
+      </Link>
+    );
+  if (await api.hasAccess(supabase).catch(() => false))
+    return (
+      <Link href="/play" className={navLink}>
+        Play
+      </Link>
+    );
   return (
-    <section id={id} className={`mx-auto mt-16 w-full max-w-[1312px] scroll-mt-6 md:mt-32 ${gutter}`}>
-      <Reveal>{children}</Reveal>
-    </section>
+    <form action="/auth/signout" method="post">
+      <button type="submit" className={`${navLink} cursor-pointer`}>
+        Sign out
+      </button>
+    </form>
   );
 }
 
@@ -38,84 +47,60 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
     redeem === "invalid" || redeem === "limited" || redeem === "error" ? redeem : null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-paper font-ui text-[17px] leading-[26px] text-ink">
-      <SmoothScroll />
-      <noscript>
-        <style>{`.reveal{opacity:1;transform:none}`}</style>
-      </noscript>
+    // Always dark: the copy sits on a night photograph in either theme.
+    <div
+      data-theme="dark"
+      className="relative isolate flex min-h-svh flex-col overflow-hidden bg-bg font-ui text-[17px] leading-[26px] text-text"
+    >
+      <Image
+        src="/images/mountain-hero.jpg"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="-z-10 object-cover object-[50%_30%]"
+      />
+      {/* Scrim under the nav, and a heavy fade into the page at the bottom. */}
+      <div aria-hidden="true" className="absolute inset-x-0 top-0 -z-10 h-40 bg-linear-to-b from-bg/80 to-transparent" />
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 bottom-0 -z-10 h-[40%] bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--bg)_75%,transparent)_55%,var(--bg)_100%)]"
+      />
 
-      <SiteHeader />
+      <header className={`flex items-center justify-between py-5 md:py-7 ${edge}`}>
+        <Link href="/" className="flex min-h-11 items-center gap-2.5">
+          <span aria-hidden="true" className="text-[22px] leading-none font-bold">
+            ∃
+          </span>
+          <span className="text-[17px] leading-none font-semibold tracking-[-0.02em]">Erudent</span>
+        </Link>
+        <nav aria-label="Site">
+          <NavAction />
+        </nav>
+      </header>
 
-      <main className="flex-[1_0_auto] pb-24 md:pb-32">
-        {/* md+: scene, then text. Below md: text first, scene underneath. */}
-        <section className="relative flex flex-col overflow-hidden">
-          <div className="order-2 mt-14 md:order-1 md:mt-0">
-            <Climb />
-          </div>
-          <div className="relative order-1 mx-auto flex w-full max-w-[760px] flex-col items-center px-4 pt-10 text-center md:order-2 md:pt-1">
-            <h1 className="text-[clamp(52px,8vw,104px)] leading-[.95] font-extrabold tracking-[-0.04em] md:text-[clamp(56px,5.8vw,76px)] md:whitespace-nowrap">
-              Math duels.
-              <br className="md:hidden" /> Ranked.
-            </h1>
-            <p className="mt-5 max-w-[460px] text-[19px] leading-[29px] text-ink-muted">
-              Same three problems. Five minutes. One opponent. Early access opens by invitation.
-            </p>
-
-            <EarlyAccess redeemError={redeemError} needsCode={access === "required"} anchorId={ENTER_CODE_ANCHOR} />
-          </div>
-        </section>
-
-        <Section id="how-it-works">
-          <h2 className={h2}>How it works</h2>
-          <ol className="mt-10 grid gap-4 md:grid-cols-3">
-            {STEPS.map((s) => (
-              <li key={s.n} className="flex flex-col rounded-(--r-md) border border-hairline bg-surface p-6 md:p-8">
-                <span className="text-[13px] leading-none font-semibold text-ink-muted tabular-nums">{s.n}</span>
-                <h3 className="mt-8 text-[28px] leading-[1.1] font-extrabold tracking-[-0.02em]">{s.title}</h3>
-                <p className="mt-3 text-ink-muted">{s.body}</p>
-              </li>
-            ))}
-          </ol>
-        </Section>
-
-        <Section>
-          <h2 className={h2}>Six ranks.</h2>
-          <p className="mt-4 max-w-[520px] text-[19px] leading-[29px] text-ink-muted">Problems get harder as you climb.</p>
-          <ol className="mt-10 flex flex-wrap items-center gap-x-2 gap-y-3" aria-label="Ranks, lowest to highest">
-            {RANKS.map((r, i) => {
-              const top = i === RANKS.length - 1;
-              return (
-                <li key={r} className="flex items-center gap-2">
-                  <span
-                    className={`inline-flex h-11 items-center rounded-(--r-pill) border px-5 text-[16px] ${
-                      top ? "border-ink bg-ink font-extrabold text-on-ink" : "border-rule font-semibold text-ink"
-                    }`}
-                  >
-                    {r}
-                  </span>
-                  {!top && (
-                    <span aria-hidden="true" className="text-ink-muted">
-                      →
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        </Section>
-
-        <Section>
-          <h2 className={h2}>Practice.</h2>
-          <p className="mt-4 text-[clamp(22px,2.6vw,30px)] leading-[1.3] font-semibold text-ink-muted">Endless, unranked, answers explained.</p>
-        </Section>
-
-        <Section>
-          <h2 className={`${h2} max-w-[760px]`}>Early access opens by invitation.</h2>
-          <EarlyAccess redeemError={null} />
-        </Section>
+      <main className="flex flex-1 flex-col items-center px-6 pt-14 pb-16 text-center md:pt-22">
+        <div className="relative flex w-full flex-col items-center">
+          {/* Soft dark pool behind the copy and form so they read over the mountain. */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-1/2 -z-10 size-[840px] -translate-x-1/2 -translate-y-1/2 bg-[radial-gradient(closest-side,rgba(11,11,13,0.55),rgba(11,11,13,0))]"
+          />
+          <p className="font-mono text-[12px] leading-none tracking-[0.14em] text-text-muted">EARLY ACCESS</p>
+          <h1 className="mt-[22px] max-w-[780px] text-[clamp(40px,8vw,64px)] leading-none font-semibold tracking-[-0.045em] text-balance">
+            Rank among the sharpest minds.
+          </h1>
+          <p className="mt-[22px] max-w-[480px] text-[18px] leading-7 tracking-[-0.01em] text-[#b3afa6]">
+            Timed 1v1 duels on competition problems. One global rank.
+          </p>
+          <EarlyAccess redeemError={redeemError} needsCode={access === "required"} anchorId={ENTER_CODE_ANCHOR} />
+        </div>
       </main>
 
-      <SiteFooter />
+      <footer className={`flex flex-wrap justify-between gap-3 py-6 text-[13px] text-text-muted ${edge}`}>
+        <span>playerudent.com</span>
+        <span>Math first. Code, medicine and physics next.</span>
+      </footer>
     </div>
   );
 }
