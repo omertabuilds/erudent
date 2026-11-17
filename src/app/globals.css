@@ -23,6 +23,15 @@
   --color-rank-6: var(--rank-6);
   --color-focus: var(--focus);
 
+  /* Design-system names: bg-bg, text-text, text-text-muted, bg-accent… */
+  --color-bg: var(--bg);
+  --color-surface-raised: var(--surface-raised);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text);
+  --color-on-accent: var(--on-accent);
+
   --color-background: var(--paper);
   --color-foreground: var(--ink);
   --color-muted: var(--ink-muted);
@@ -44,31 +53,14 @@ body {
   outline-offset: 2px;
 }
 
-/* Landing hero: mountain colors (illustration only, mixed from ink and paper). */
+/* Drawn ridges (auth shell, profile banner): mixed from ink and paper. */
 :root, [data-theme="dark"] {
   --ridge-far: color-mix(in oklab, var(--ink) 15%, var(--paper));
   --ridge-mid: color-mix(in oklab, var(--ink) 8%, var(--paper));
-  --sky: color-mix(in oklab, var(--ink) 5%, var(--paper));
-  --sticker-edge: var(--ink); /* light die-cut margin in both themes */
 }
 [data-theme="light"] {
   --ridge-far: color-mix(in oklab, var(--ink) 5%, var(--paper));
   --ridge-mid: color-mix(in oklab, var(--ink) 11%, var(--paper));
-  --sky: color-mix(in oklab, var(--ink) 2.5%, var(--paper));
-  --sticker-edge: var(--paper);
-}
-
-/* Landing hero stickers: tilted, drop in once with a stagger. Transform and opacity only. */
-@keyframes sticker-drop {
-  from { opacity: 0; transform: translate3d(0, -24px, 0) rotate(calc(var(--r) - 6deg)) scale(1.08); }
-  to { opacity: 1; transform: rotate(var(--r)); }
-}
-.sticker {
-  transform: rotate(var(--r));
-  animation: sticker-drop 560ms cubic-bezier(0.2, 0.9, 0.3, 1.15) calc(250ms + var(--i) * 90ms) both;
-}
-@media (prefers-reduced-motion: reduce) {
-  .sticker { animation: none; }
 }
 
 /* Landing sections: fade and rise once on entering view (see Reveal.tsx). */

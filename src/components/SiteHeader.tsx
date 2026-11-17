@@ -15,14 +15,13 @@ const small = "inline-flex min-h-11 cursor-pointer items-center px-1.5 sm:px-2 t
 export type HeaderState = "signed-out" | "no-access" | "player" | "setup";
 
 /**
- * Lockup left; "How it works" and the action for this visitor right.
+ * Lockup left; Rules and the action for this visitor right.
  * - signed out → Sign in
  * - signed in with a redeemed code → Play
  * - signed in without one → Enter code (opens the code tab below) and Sign out,
  *   for someone signed in with the wrong account
  * - signed in, still choosing a username (onboarding, rename) → Sign out only
- *
- * Below 400px "How it works" drops out so the row fits a 360px phone; Rules stays.
+
  */
 export default async function SiteHeader() {
   const supabase = await createClient();
@@ -42,12 +41,6 @@ export function SiteHeaderView({ state, current }: { state: HeaderState; current
         <span className="text-[22px] leading-none font-extrabold tracking-[-0.02em] max-[359px]:sr-only">Erudent</span>
       </Link>
       <nav className="flex items-center sm:gap-2" aria-label="Site">
-        {/* A plain anchor on purpose: Lenis smooth-scrolls "/#…" links on the landing page,
-            and next/link would run its own hash scroll on top of it. */}
-        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-        <a href="/#how-it-works" className={`${link} ${state === "no-access" ? "max-sm:hidden" : "max-[399px]:hidden"}`}>
-          How it works
-        </a>
         <Link href="/rules" className={`${link} ${state === "no-access" ? "max-sm:hidden" : ""}`}>
           Rules
         </Link>
