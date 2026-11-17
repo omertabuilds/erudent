@@ -33,77 +33,22 @@ export const hue = (n: number) => (n >= 1 && n <= 6 ? `var(--rank-${n})` : "var(
 const tint = (color: string, pct: number) => `color-mix(in oklab, ${color} ${pct}%, var(--surface))`;
 
 export default function ProfileBanner({ player, rank, editable = false }: { player: BannerPlayer; rank: string; editable?: boolean }) {
-  const router = useRouter();
-  const sb = useRef(createClient()).current;
   const tier = TIER_NAMES.indexOf(rank as (typeof TIER_NAMES)[number]) + 1; // 0 while unranked
 
   const [saved, setSaved] = useState<ProfileStyle>({ banner: player.banner, accent: player.accent, tagline: player.tagline });
-  const [draft, setDraft] = useState<ProfileStyle>(saved);
-  const [picture, setPicture] = useState({ path: player.avatar_path, url: player.avatar_url });
+  const [preview, setPreview] = useState<ProfileStyle | null>(null);
+  const [pictureUrl, setPictureUrl] = useState(player.avatar_url);
   const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [styleError, setStyleError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [pictureError, setPictureError] = useState<string | null>(null);
   const panelId = useId();
 
   // While customizing, the banner above previews the draft.
-  const shown = open ? draft : saved;
+  const shown = open && preview ? preview : saved;
   const accentHue = hue(shown.accent || tier);
   const placementLeft = Math.max(0, PLACEMENT - player.matches_played);
 
   function close() {
-    setDraft(saved);
-    setStyleError(null);
-    setPictureError(null);
+    setPreview(null);
     setOpen(false);
-  }
-
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setStyleError(null);
-    try {
-      const s = await api.updateProfileStyle(sb, draft);
-      setSaved(s);
-      setDraft(s);
-      setOpen(false);
-      router.refresh();
-    } catch (err) {
-      setStyleError(friendlyError(err));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function pick(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // picking the same file again still fires
-    if (!file) return;
-    setUploading(true);
-    setPictureError(null);
-    try {
-      setPicture(await uploadAvatar(sb, player.id, file));
-      router.refresh();
-    } catch (err) {
-      setPictureError(friendlyError(err));
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  async function unsetPicture() {
-    setUploading(true);
-    setPictureError(null);
-    try {
-      await removeAvatar(sb, player.id);
-      setPicture({ path: null, url: null });
-      router.refresh();
-    } catch (err) {
-      setPictureError(friendlyError(err));
-    } finally {
-      setUploading(false);
-    }
   }
 
   return (
@@ -116,7 +61,7 @@ export default function ProfileBanner({ player, rank, editable = false }: { play
         <div className="flex min-w-0 flex-[1_1_320px] items-start gap-4 md:gap-5">
           {/* Only the picture rides up over the banner's edge; the name sits below it. */}
           <span className="-mt-7 flex md:-mt-9">
-            <Picture username={player.username} url={picture.url} />
+            <Picture username={player.username} url={pictureUrl} />
           </span>
           <div className="min-w-0 pt-3 md:pt-4">
             <p className="text-[22px] leading-[28px] font-extrabold tracking-[-0.01em] break-all md:text-[28px] md:leading-[32px] md:tracking-[-0.02em]">
@@ -164,124 +109,230 @@ export default function ProfileBanner({ player, rank, editable = false }: { play
       </div>
 
       {editable && open && (
-        <div id={panelId} className="border-t border-hairline px-5 py-6 md:px-8 md:py-8">
-          <div className="grid gap-10 lg:grid-cols-12 lg:gap-x-16">
-            <section aria-labelledby={`${panelId}-pic`} className="lg:col-span-4">
-              <h3 id={`${panelId}-pic`} className="font-semibold">
-                Profile picture
-              </h3>
-              <div className="mt-4 flex items-center gap-4">
-                <Picture username={player.username} url={picture.url} size={64} ring={false} />
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                  <label
-                    className={`${secondary} cursor-pointer has-[:disabled]:cursor-default has-[:disabled]:opacity-40 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus`}
-                  >
-                    {uploading ? "Uploading…" : picture.url ? "Replace" : "Upload"}
-                    <input type="file" accept={AVATAR_TYPES.join(",")} onChange={pick} disabled={uploading} className="sr-only" />
-                  </label>
-                  {picture.url && (
-                    <button type="button" onClick={unsetPicture} disabled={uploading} className={`${quiet} disabled:opacity-40`}>
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-              <p className={`${caption} mt-3`}>JPEG, PNG or WebP. Cropped to a square. Saves as soon as it uploads.</p>
-              {pictureError && (
-                <p role="alert" className="mt-2 text-[15px] leading-[22px]">
-                  {pictureError}
-                </p>
-              )}
-            </section>
-
-            <form onSubmit={save} className="flex flex-col gap-8 lg:col-span-8">
-              <fieldset>
-                <legend className="font-semibold">Banner</legend>
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {BANNERS.map((b) => (
-                    <label key={b} className="group flex cursor-pointer flex-col gap-2">
-                      <input
-                        type="radio"
-                        name={`${panelId}-banner`}
-                        value={b}
-                        checked={draft.banner === b}
-                        onChange={() => setDraft({ ...draft, banner: b })}
-                        className="peer sr-only"
-                      />
-                      <span
-                        aria-hidden="true"
-                        className="block h-14 overflow-hidden rounded-(--r-sm) border border-hairline peer-checked:border-ink peer-checked:outline-1 peer-checked:outline-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus"
-                      >
-                        <BannerArt banner={b} color={accentHue} />
-                      </span>
-                      <span className="text-[15px] text-ink-muted peer-checked:font-semibold peer-checked:text-ink">{BANNER_NAMES[b]}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-
-              <fieldset>
-                <legend className="font-semibold">Accent</legend>
-                <div className="mt-4 flex flex-wrap gap-x-2 gap-y-2">
-                  {[0, 1, 2, 3, 4, 5, 6].map((a) => (
-                    <label key={a} className="cursor-pointer">
-                      <input
-                        type="radio"
-                        name={`${panelId}-accent`}
-                        value={a}
-                        checked={draft.accent === a}
-                        onChange={() => setDraft({ ...draft, accent: a })}
-                        className="peer sr-only"
-                      />
-                      <span className="inline-flex h-11 items-center gap-2 rounded-(--r-pill) border border-hairline pr-4 pl-2 text-[15px] text-ink-muted peer-checked:border-ink peer-checked:font-semibold peer-checked:text-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus">
-                        <span aria-hidden="true" className="size-6 rounded-full" style={{ background: hue(a || tier) }} />
-                        {a === 0 ? "Rank" : HUE_NAMES[a - 1]}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-                <p className={`${caption} mt-3`}>Rank follows your rank&apos;s hue as you climb.</p>
-              </fieldset>
-
-              <div>
-                <div className="flex items-baseline justify-between gap-4">
-                  <label htmlFor={`${panelId}-tagline`} className="font-semibold">
-                    Tagline
-                  </label>
-                  <span className={`${caption} tabular-nums`} aria-live="polite">
-                    {(draft.tagline ?? "").length}/60
-                  </span>
-                </div>
-                <input
-                  id={`${panelId}-tagline`}
-                  value={draft.tagline ?? ""}
-                  onChange={(e) => setDraft({ ...draft, tagline: e.target.value })}
-                  maxLength={60}
-                  autoComplete="off"
-                  placeholder="One line about you"
-                  className="mt-3 h-11 w-full rounded-(--r-md) border border-hairline bg-sunken px-4 text-ink placeholder:text-ink-muted"
-                />
-              </div>
-
-              {styleError && (
-                <p role="alert" className="text-[15px] leading-[22px]">
-                  {styleError}
-                </p>
-              )}
-
-              <div className="flex flex-wrap items-center gap-4">
-                <button disabled={saving} className={`${secondary} disabled:opacity-40`}>
-                  {saving ? "Saving…" : "Save"}
-                </button>
-                <button type="button" onClick={close} className={quiet}>
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <CustomizePanel
+          id={panelId}
+          player={{ ...player, ...saved, avatar_url: pictureUrl }}
+          tier={tier}
+          onDraft={setPreview}
+          onSaved={(s) => {
+            setSaved(s);
+            close();
+          }}
+          onPicture={setPictureUrl}
+          onClose={close}
+        />
       )}
     </section>
+  );
+}
+
+/**
+ * Profile customization: picture (uploads at once), then banner preset, accent and tagline
+ * (saved together). Used under the /play banner and under ProfileBanner. The preset and
+ * accent are what opponents see on your match card.
+ */
+export function CustomizePanel({
+  id,
+  player,
+  tier,
+  onClose,
+  onSaved,
+  onDraft,
+  onPicture,
+}: {
+  id: string;
+  player: Pick<BannerPlayer, "id" | "username" | "banner" | "accent" | "tagline" | "avatar_path" | "avatar_url">;
+  /** 1–6, or 0 while unranked: the "Rank" accent follows it. */
+  tier: number;
+  onClose: () => void;
+  onSaved?: (style: ProfileStyle) => void;
+  /** Every draft change, for a live preview. */
+  onDraft?: (style: ProfileStyle) => void;
+  onPicture?: (url: string | null) => void;
+}) {
+  const router = useRouter();
+  const sb = useRef(createClient()).current;
+  const panelId = id;
+  const [draft, setDraftState] = useState<ProfileStyle>({ banner: player.banner, accent: player.accent, tagline: player.tagline });
+  const [picture, setPicture] = useState({ path: player.avatar_path, url: player.avatar_url });
+  const [saving, setSaving] = useState(false);
+  const [styleError, setStyleError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [pictureError, setPictureError] = useState<string | null>(null);
+  const accentHue = hue(draft.accent || tier);
+  const close = onClose;
+
+  function setDraft(d: ProfileStyle) {
+    setDraftState(d);
+    onDraft?.(d);
+  }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setStyleError(null);
+    try {
+      const s = await api.updateProfileStyle(sb, draft);
+      onSaved?.(s);
+      router.refresh();
+      if (!onSaved) close();
+    } catch (err) {
+      setStyleError(friendlyError(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function pick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // picking the same file again still fires
+    if (!file) return;
+    setUploading(true);
+    setPictureError(null);
+    try {
+      const p = await uploadAvatar(sb, player.id, file);
+      setPicture(p);
+      onPicture?.(p.url);
+      router.refresh();
+    } catch (err) {
+      setPictureError(friendlyError(err));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function unsetPicture() {
+    setUploading(true);
+    setPictureError(null);
+    try {
+      await removeAvatar(sb, player.id);
+      setPicture({ path: null, url: null });
+      onPicture?.(null);
+      router.refresh();
+    } catch (err) {
+      setPictureError(friendlyError(err));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div id={panelId} className="border-t border-hairline px-5 py-6 md:px-8 md:py-8">
+      <div className="grid gap-10 lg:grid-cols-12 lg:gap-x-16">
+        <section aria-labelledby={`${panelId}-pic`} className="lg:col-span-4">
+          <h3 id={`${panelId}-pic`} className="font-semibold">
+            Profile picture
+          </h3>
+          <div className="mt-4 flex items-center gap-4">
+            <Picture username={player.username} url={picture.url} size={64} ring={false} />
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <label
+                className={`${secondary} cursor-pointer has-[:disabled]:cursor-default has-[:disabled]:opacity-40 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus`}
+              >
+                {uploading ? "Uploading…" : picture.url ? "Replace" : "Upload"}
+                <input type="file" accept={AVATAR_TYPES.join(",")} onChange={pick} disabled={uploading} className="sr-only" />
+              </label>
+              {picture.url && (
+                <button type="button" onClick={unsetPicture} disabled={uploading} className={`${quiet} disabled:opacity-40`}>
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+          <p className={`${caption} mt-3`}>JPEG, PNG or WebP. Cropped to a square. Saves as soon as it uploads.</p>
+          {pictureError && (
+            <p role="alert" className="mt-2 text-[15px] leading-[22px]">
+              {pictureError}
+            </p>
+          )}
+        </section>
+
+        <form onSubmit={save} className="flex flex-col gap-8 lg:col-span-8">
+          <fieldset>
+            <legend className="font-semibold">Banner</legend>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {BANNERS.map((b) => (
+                <label key={b} className="group flex cursor-pointer flex-col gap-2">
+                  <input
+                    type="radio"
+                    name={`${panelId}-banner`}
+                    value={b}
+                    checked={draft.banner === b}
+                    onChange={() => setDraft({ ...draft, banner: b })}
+                    className="peer sr-only"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="block h-14 overflow-hidden rounded-(--r-sm) border border-hairline peer-checked:border-ink peer-checked:outline-1 peer-checked:outline-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus"
+                  >
+                    <BannerArt banner={b} color={accentHue} />
+                  </span>
+                  <span className="text-[15px] text-ink-muted peer-checked:font-semibold peer-checked:text-ink">{BANNER_NAMES[b]}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend className="font-semibold">Accent</legend>
+            <div className="mt-4 flex flex-wrap gap-x-2 gap-y-2">
+              {[0, 1, 2, 3, 4, 5, 6].map((a) => (
+                <label key={a} className="cursor-pointer">
+                  <input
+                    type="radio"
+                    name={`${panelId}-accent`}
+                    value={a}
+                    checked={draft.accent === a}
+                    onChange={() => setDraft({ ...draft, accent: a })}
+                    className="peer sr-only"
+                  />
+                  <span className="inline-flex h-11 items-center gap-2 rounded-(--r-pill) border border-hairline pr-4 pl-2 text-[15px] text-ink-muted peer-checked:border-ink peer-checked:font-semibold peer-checked:text-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus">
+                    <span aria-hidden="true" className="size-6 rounded-full" style={{ background: hue(a || tier) }} />
+                    {a === 0 ? "Rank" : HUE_NAMES[a - 1]}
+                  </span>
+                </label>
+              ))}
+            </div>
+            <p className={`${caption} mt-3`}>Rank follows your rank&apos;s hue as you climb.</p>
+          </fieldset>
+
+          <div>
+            <div className="flex items-baseline justify-between gap-4">
+              <label htmlFor={`${panelId}-tagline`} className="font-semibold">
+                Tagline
+              </label>
+              <span className={`${caption} tabular-nums`} aria-live="polite">
+                {(draft.tagline ?? "").length}/60
+              </span>
+            </div>
+            <input
+              id={`${panelId}-tagline`}
+              value={draft.tagline ?? ""}
+              onChange={(e) => setDraft({ ...draft, tagline: e.target.value })}
+              maxLength={60}
+              autoComplete="off"
+              placeholder="One line about you"
+              className="mt-3 h-11 w-full rounded-(--r-md) border border-hairline bg-sunken px-4 text-ink placeholder:text-ink-muted"
+            />
+          </div>
+
+          {styleError && (
+            <p role="alert" className="text-[15px] leading-[22px]">
+              {styleError}
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center gap-4">
+            <button disabled={saving} className={`${secondary} disabled:opacity-40`}>
+              {saving ? "Saving…" : "Save"}
+            </button>
+            <button type="button" onClick={close} className={quiet}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 
