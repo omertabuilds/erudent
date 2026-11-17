@@ -9,7 +9,7 @@ const LINE_HEIGHT = 31;
 /**
  * Draws the question as an image instead of text, so it can't be
  * copied, selected or pasted into another tool during ranked play.
- * Set in Archivo, in ink, at the size /practice uses for its prompt.
+ * Set in Geist, in ink, at the size /practice uses for its prompt.
  */
 export default function QuestionCanvas({ text }: { text: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -17,7 +17,7 @@ export default function QuestionCanvas({ text }: { text: string }) {
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
-    let ready = false; // nothing is drawn until Archivo has loaded
+    let ready = false; // nothing is drawn until Geist has loaded
     let cancelled = false;
 
     const draw = () => {
@@ -26,7 +26,7 @@ export default function QuestionCanvas({ text }: { text: string }) {
       if (!ctx) return;
       const dpr = window.devicePixelRatio || 1;
       const width = canvas.parentElement?.clientWidth ?? 600;
-      // font-ui on the canvas resolves to the Archivo family next/font loaded.
+      // font-ui on the canvas resolves to the Geist family next/font loaded.
       const style = getComputedStyle(canvas);
       const font = `${FONT_SIZE}px ${style.fontFamily}`;
       ctx.font = font;

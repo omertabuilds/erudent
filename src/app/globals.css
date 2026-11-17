@@ -28,8 +28,9 @@
   --color-muted: var(--ink-muted);
   --color-line: var(--hairline);
 
-  /* Archivo, loaded in layout.tsx */
-  --font-ui: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
+  /* Geist and Geist Mono, loaded in layout.tsx (see tokens.css) */
+  --font-ui: var(--font-sans);
+  --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
 }
 
 body {
