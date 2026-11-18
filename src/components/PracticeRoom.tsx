@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { api, friendlyError, tierName, TIER_NAMES, type PracticeQuestion, type PracticeStats } from "@/lib/erudent";
-import { kicker, quiet, secondary, sheet } from "@/components/ui";
+import RankBadge, { type Rank } from "@/components/RankBadge";
+import { ScratchPad } from "@/components/Workspace";
 
 /**
  * What the server revealed after an answer or a skip. `yours` is null for a skip.
@@ -37,6 +38,7 @@ export default function PracticeRoom() {
   const [reported, setReported] = useState<Set<string>>(new Set());
   const [reporting, setReporting] = useState<string | null>(null); // question id with the report form open
   const [reason, setReason] = useState("");
+  const [scratch, setScratch] = useState(""); // private, cleared with each new problem
   const inputRef = useRef<HTMLInputElement>(null);
   const pendingId = useRef<string | null>(null); // question on screen, not yet answered
 
@@ -63,6 +65,7 @@ export default function PracticeRoom() {
           pendingId.current = q.question_id;
           setRevealed(null);
           setInput("");
+          setScratch("");
         }
       } catch (e) {
         const empty = (e instanceof Error ? e.message : String(e)).match(/no_questions_for_tier (\d)/);
@@ -186,247 +189,266 @@ export default function PracticeRoom() {
   const byTier = [...(stats?.by_tier ?? [])].sort((a, b) => a.tier - b.tier);
   const currentTier = revealed?.next?.tier ?? setting?.tier ?? null;
 
+  const tierColor = (t: number) => `var(--rank-${t}-text)`;
+
   return (
-    <div className="grid gap-12 md:grid-cols-12 md:gap-x-8 lg:gap-x-16">
-      <div className="flex min-w-0 flex-col gap-6 md:col-span-7">
-        <section aria-label="Tier" className="flex flex-col gap-3">
-          {/* A text row, not chips: the picked tier in ink 800, the rest ink-muted. */}
-          <div className="-ml-2 flex flex-wrap items-center">
-            {[null, ...TIER_NAMES.map((_, i) => i + 1)].map((t, i) => {
-              const selected = !!setting && (t === null ? setting.auto : !setting.auto && setting.tier === t);
-              return (
-                <span key={t ?? "auto"} className="flex items-center">
-                  {i > 0 && (
-                    <span aria-hidden="true" className="text-ink-muted">
-                      ·
-                    </span>
-                  )}
-                  <button onClick={() => pickTier(t)} disabled={busy || !setting} aria-pressed={selected} className={tierLink(selected)}>
-                    {t === null ? "Auto" : tierName(t)}
-                  </button>
-                </span>
-              );
-            })}
-          </div>
-          <p className="text-[13px] leading-[18px] text-ink-muted">
-            {!setting ? "\u00a0" : setting.tier ? `${setting.auto ? "Auto · " : ""}${tierName(setting.tier)}` : "Auto"}
-          </p>
-        </section>
+    <div className="flex flex-wrap items-start gap-6">
+      <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-4">
+        <header>
+          <p className={`${mono} text-[#6e6a62]`}>Mathematics · No clock · No rating</p>
+          <h1 className="mt-1.5 text-[32px] leading-none font-semibold tracking-[-0.045em]">Practice</h1>
+        </header>
+
+        <div role="group" aria-label="Tier" className="flex flex-wrap gap-1 rounded-(--radius-md) border border-line bg-surface p-[3px]">
+          {[null, ...TIER_NAMES.map((_, i) => i + 1)].map((t) => {
+            const selected = !!setting && (t === null ? setting.auto : !setting.auto && setting.tier === t);
+            return (
+              <button
+                key={t ?? "auto"}
+                type="button"
+                onClick={() => pickTier(t)}
+                disabled={busy || !setting}
+                aria-pressed={selected}
+                className={`flex h-8 cursor-pointer items-center gap-1.5 rounded-[6px] px-3 text-[13px] font-medium disabled:cursor-default ${
+                  selected ? "bg-surface-raised" : "text-[#8a867d] hover:text-text"
+                }`}
+                style={selected ? { color: t === null ? "var(--text)" : tierColor(t) } : undefined}
+              >
+                {t !== null && <RankBadge rank={t as Rank} size={16} decorative />}
+                {t === null ? "Auto" : tierName(t)}
+              </button>
+            );
+          })}
+        </div>
 
         {error && !question ? (
-          <section className={`${sheet} justify-center`}>
+          <section className={`${card} flex flex-col items-start gap-6 p-8`}>
             <p>{error}</p>
-            <Link href="/play" className={`${secondary} mt-6 self-start`}>
+            <Link href="/play" className={secondary}>
               Back to lobby
             </Link>
           </section>
         ) : emptyTier && suggestion ? (
-          <section className={sheet}>
-            <h2 className="text-[28px] leading-[1.1] font-extrabold tracking-[-0.02em]">No {tierName(emptyTier)} problems yet.</h2>
-            <p className="mt-3 text-ink-muted">More are on the way. Pick another tier for now.</p>
-            <button onClick={() => pickTier(suggestion)} disabled={busy} className={`${secondary} mt-8 self-start`}>
+          <section className={`${card} flex flex-col items-start p-8`}>
+            <h2 className="text-[24px] leading-[1.15] font-semibold tracking-[-0.03em]">No {tierName(emptyTier)} problems yet.</h2>
+            <p className="mt-2 text-[15px] text-text-muted">More are on the way. Pick another tier for now.</p>
+            <button onClick={() => pickTier(suggestion)} disabled={busy} className={`${secondary} mt-6`}>
               Try {tierName(suggestion)}
             </button>
           </section>
         ) : question ? (
-          <section className={sheet} aria-label="Problem">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <span className="text-[13px] leading-[18px] font-semibold text-ink-muted tabular-nums">№ {revealed ? revealed.no : attempted + 1}</span>
-              <span className="text-[13px] leading-[18px] text-ink-muted">
-                {tierName(question.tier)} · {question.topic}
-              </span>
-            </div>
+          <>
+            <section className={`${card} flex flex-col gap-6 p-6 md:p-8`} aria-label="Problem">
+              <div className={`flex flex-wrap items-center justify-between gap-3 ${mono} text-[#6e6a62]`}>
+                <span>
+                  <span style={{ color: tierColor(question.tier) }}>{tierName(question.tier)}</span> · {question.topic}
+                </span>
+                <span>{setting?.auto ? "Auto · adjusts to your results" : "Fixed tier"}</span>
+              </div>
 
-            <p className="mt-6 text-[21px] leading-[31px] whitespace-pre-wrap">{question.prompt}</p>
+              <p className="font-mono text-[22px] leading-[34px] whitespace-pre-wrap">{question.prompt}</p>
 
-            <form onSubmit={submit} className="mt-8 flex gap-2">
-              <input
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                readOnly={!!revealed}
-                inputMode="text"
-                autoComplete="off"
-                aria-label="Your answer"
-                placeholder="12 or 3/4"
-                className="h-14 w-full min-w-0 rounded-(--r-md) border border-hairline bg-sunken px-4 text-[19px] text-ink tabular-nums placeholder:text-ink-muted read-only:text-ink-muted"
-              />
-              <button
-                disabled={busy || (!revealed && !input.trim())}
-                className="h-14 flex-none rounded-(--r-md) bg-ink px-6 text-[15px] font-bold text-on-ink disabled:opacity-40"
-              >
-                {revealed ? "Next" : "Submit"}
-              </button>
-            </form>
-
-            {!revealed && (
-              <button onClick={skip} disabled={busy} className={`${quiet} mt-2 self-start underline underline-offset-4 disabled:no-underline`}>
-                Skip and show the answer
-              </button>
-            )}
-
-            {notice && (
-              <p role="status" className="mt-4 text-[15px] leading-[22px]">
-                {notice}
-              </p>
-            )}
-            {error && <p className="mt-4 text-[15px] leading-[22px]">{error}</p>}
-
-            <div aria-live="polite">
-              {revealed && (
-                <div className="mt-8 border-t border-hairline pt-8">
-                  <h2 className="text-[28px] leading-[1.1] font-extrabold tracking-[-0.02em]">
-                    {revealed.correct ? (
-                      <>
-                        <span className="text-pencil">✓</span> Correct.
-                      </>
-                    ) : revealed.yours === null ? (
-                      "Skipped."
-                    ) : (
-                      <span className="text-ink-muted">✗ Wrong.</span>
-                    )}
-                  </h2>
-
-                  <dl className="mt-5 flex flex-wrap gap-x-10 gap-y-3">
-                    <div className="flex items-baseline gap-3">
-                      <dt className="text-[15px] font-semibold text-ink-muted">Answer</dt>
-                      <dd className="text-[22px] leading-[28px] font-bold tabular-nums">{revealed.answer}</dd>
-                    </div>
-                    {revealed.yours !== null && (
-                      <div className="flex items-baseline gap-3">
-                        <dt className="text-[15px] font-semibold text-ink-muted">You</dt>
-                        <dd className={`text-[22px] leading-[28px] font-bold tabular-nums ${revealed.correct ? "" : "text-ink-muted"}`}>{revealed.yours}</dd>
-                      </div>
-                    )}
-                  </dl>
-
-                  {revealed.next && (
-                    <p className="mt-3 text-[15px] leading-[22px] font-semibold">
-                      Next: {tierName(revealed.next.tier)} {revealed.next.up ? "↑" : "↓"}
-                    </p>
-                  )}
-
-                  {revealed.solution && (
-                    <div className="mt-8">
-                      <p className={kicker}>Proof</p>
-                      <p className="mt-3 whitespace-pre-wrap">
-                        {revealed.solution} <span className="text-pencil">∎</span>
+              {!revealed && (
+                <div className="flex flex-col gap-2.5">
+                  <form onSubmit={submit} className="flex gap-2">
+                    <input
+                      ref={inputRef}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      inputMode="text"
+                      autoComplete="off"
+                      aria-label="Your answer"
+                      placeholder="Integer or fraction, like 3/4"
+                      className="h-12 w-full min-w-0 rounded-(--radius-md) border border-[#2c2c33] bg-bg px-4 font-mono text-[18px] text-text placeholder:font-sans placeholder:text-[15px] placeholder:text-[#6e6a62]"
+                    />
+                    <button disabled={busy || !input.trim()} className={`${primary} h-12`}>
+                      Submit
+                    </button>
+                  </form>
+                  <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 text-[13px]">
+                    <button
+                      type="button"
+                      onClick={skip}
+                      disabled={busy}
+                      className="inline-flex min-h-8 cursor-pointer items-center text-[#8a867d] underline underline-offset-[3px] hover:text-text disabled:cursor-default disabled:no-underline disabled:opacity-40"
+                    >
+                      Skip and show the answer
+                    </button>
+                    {notice && (
+                      <p role="status" className="py-1.5 text-text">
+                        {notice}
                       </p>
-                    </div>
-                  )}
-
-                  {reporting === revealed.questionId ? (
-                    <form onSubmit={(e) => sendReport(e, revealed.questionId)} className="mt-8 flex flex-col gap-3">
-                      <label htmlFor="report-reason" className="text-[15px] font-semibold">
-                        What&apos;s wrong with this problem?
-                      </label>
-                      <textarea
-                        id="report-reason"
-                        autoFocus
-                        rows={3}
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                        className="w-full rounded-(--r-md) border border-hairline bg-sunken px-4 py-3 text-ink"
-                      />
-                      <div className="flex gap-2">
-                        <button disabled={!reason.trim()} className={`${secondary} disabled:opacity-40`}>
-                          Send
-                        </button>
-                        <button type="button" onClick={() => setReporting(null)} className={secondary}>
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <div className="mt-8 flex flex-wrap items-center justify-between gap-x-4">
-                      <p className="text-[13px] leading-[18px] text-ink-muted">Enter for the next problem</p>
-                      {reported.has(revealed.questionId) ? (
-                        <p className={`${quiet} cursor-default`}>Reported.</p>
-                      ) : (
-                        <button onClick={() => setReporting(revealed.questionId)} className={quiet}>
-                          Report problem
-                        </button>
-                      )}
-                    </div>
-                  )}
+                    )}
+                  </div>
+                  {error && <p className="text-[13px] text-accent-text">{error}</p>}
                 </div>
               )}
-            </div>
-          </section>
+
+              <div aria-live="polite">
+                {revealed && (
+                  <div className="flex flex-col gap-[18px] border-t border-line pt-5">
+                    <div className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
+                      <h2
+                        className={`text-[24px] leading-tight font-semibold tracking-[-0.03em] ${
+                          revealed.correct ? "text-[var(--rank-2-text)]" : revealed.yours === null ? "text-text-muted" : "text-[#ff8f80]"
+                        }`}
+                      >
+                        {revealed.correct ? "Correct" : revealed.yours === null ? "Skipped" : "Not quite"}
+                      </h2>
+                      <p className="font-mono text-[13px] text-[#8a867d]">
+                        ANSWER <span className="text-text">{revealed.answer}</span>
+                      </p>
+                      {revealed.yours !== null && !revealed.correct && (
+                        <p className="font-mono text-[13px] text-[#8a867d]">YOURS {revealed.yours}</p>
+                      )}
+                    </div>
+
+                    {revealed.next && (
+                      <p className="font-mono text-[12px] tracking-[0.06em] text-text-muted">
+                        NEXT: <span style={{ color: tierColor(revealed.next.tier) }}>{tierName(revealed.next.tier).toUpperCase()}</span>{" "}
+                        <span aria-hidden="true">{revealed.next.up ? "↑" : "↓"}</span>
+                        <span className="sr-only">{revealed.next.up ? "(up)" : "(down)"}</span>
+                      </p>
+                    )}
+
+                    {revealed.solution && (
+                      <div>
+                        <p className="font-mono text-[10px] tracking-[0.14em] text-[#6e6a62]">PROOF</p>
+                        <p className="mt-1.5 text-[15px] leading-6 whitespace-pre-wrap text-[#d6d2c9]">
+                          {revealed.solution} <span className="text-accent-text">∎</span>
+                        </p>
+                      </div>
+                    )}
+
+                    {reporting === revealed.questionId ? (
+                      <form onSubmit={(e) => sendReport(e, revealed.questionId)} className="flex flex-col gap-3">
+                        <label htmlFor="report-reason" className="text-[14px] font-semibold">
+                          What&apos;s wrong with this problem?
+                        </label>
+                        <textarea
+                          id="report-reason"
+                          autoFocus
+                          rows={3}
+                          value={reason}
+                          onChange={(e) => setReason(e.target.value)}
+                          className="w-full rounded-(--radius-md) border border-line bg-bg px-4 py-3 text-[15px] text-text"
+                        />
+                        <div className="flex gap-2">
+                          <button disabled={!reason.trim()} className={secondary}>
+                            Send
+                          </button>
+                          <button type="button" onClick={() => setReporting(null)} className={quiet}>
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <button type="button" onClick={next} disabled={busy} className={primary}>
+                          Next problem
+                        </button>
+                        <span className="flex items-center gap-4 text-[12px] text-[#6e6a62]">
+                          <span>Enter for the next problem</span>
+                          {reported.has(revealed.questionId) ? (
+                            <span>Reported.</span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setReporting(revealed.questionId)}
+                              className="inline-flex min-h-8 cursor-pointer items-center text-[#8a867d] underline underline-offset-[3px] hover:text-text"
+                            >
+                              Report problem
+                            </button>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section aria-label="Scratch" className={`${card} overflow-hidden`}>
+              <div className="flex items-center justify-between gap-3 border-b border-line px-3.5 py-2.5 text-[12px] text-[#6e6a62]">
+                <span className="font-mono text-[10px] tracking-[0.14em]">SCRATCH</span>
+                <span>Private · cleared on next problem</span>
+              </div>
+              <ScratchPad value={scratch} onChange={setScratch} height={150} />
+            </section>
+          </>
         ) : (
-          <section className={sheet} aria-busy="true">
-            <p className="text-[13px] leading-[18px] text-ink-muted">Loading…</p>
+          <section className={`${card} p-8`} aria-busy="true">
+            <p className="text-[13px] text-text-muted">Loading…</p>
           </section>
         )}
 
         {notice && !question && (
-          <p role="status" className="text-[15px] leading-[22px]">
+          <p role="status" className="text-[14px] leading-[21px]">
             {notice}
           </p>
         )}
       </div>
 
-      <aside aria-label="Your practice" className="flex flex-col md:col-span-4 md:col-start-9">
-        <p className={note}>Streak</p>
-        <p className="mt-2 text-[80px] leading-[0.9] font-extrabold tracking-[-0.04em] tabular-nums">{stats?.streak ?? 0}</p>
-
-        <dl className="mt-8 border-t border-hairline">
+      <aside aria-label="Your practice" className="flex min-w-0 flex-[1_1_280px] flex-col gap-4">
+        <dl className="grid grid-cols-3 gap-3 rounded-(--radius-lg) border border-line p-5 font-mono">
           {[
-            ["Best streak", `${stats?.best_streak ?? 0}`],
-            ["Correct", `${stats?.correct ?? 0}/${attempted}`],
+            ["Streak", `${stats?.streak ?? 0}`],
+            ["Best", `${stats?.best_streak ?? 0}`],
             ["Accuracy", accuracy === null ? "—" : `${accuracy}%`],
           ].map(([k, v]) => (
-            <div key={k} className="flex items-baseline justify-between border-b border-hairline py-3">
-              <dt className="text-ink-muted">{k}</dt>
-              <dd className="font-semibold tabular-nums">{v}</dd>
+            <div key={k} className="flex flex-col-reverse">
+              <dt className="mt-1 text-[10px] tracking-[0.14em] text-[#6e6a62] uppercase">{k}</dt>
+              <dd className="text-[28px] leading-8 font-semibold tracking-[-0.03em] tabular-nums">{v}</dd>
             </div>
           ))}
         </dl>
 
-        <p className={`${note} mt-10`}>By tier</p>
-        {byTier.length ? (
-          <table className="mt-3 w-full border-collapse text-left tabular-nums">
-            <thead>
-              <tr className="border-b border-hairline text-[13px] text-ink-muted">
-                <th scope="col" className="w-6 py-2 font-normal">
-                  <span className="sr-only">Current</span>
-                </th>
-                <th scope="col" className="py-2 font-normal">Tier</th>
-                <th scope="col" className="py-2 text-right font-normal">Done</th>
-                <th scope="col" className="py-2 text-right font-normal">%</th>
-              </tr>
-            </thead>
-            <tbody>
-              {byTier.map((t) => {
-                const current = t.tier === currentTier;
-                return (
-                  <tr key={t.tier} className="border-b border-hairline">
-                    <td className="py-3 text-ink-muted">{current && (
-                        <>
-                          <span aria-hidden="true">→</span>
-                          <span className="sr-only">Current tier</span>
-                        </>
-                      )}</td>
-                    <td className={`py-3 ${current ? "font-semibold" : ""}`}>{tierName(t.tier)}</td>
-                    <td className="py-3 text-right">{t.attempted}</td>
-                    <td className="py-3 text-right">{t.attempted ? Math.round((100 * t.correct) / t.attempted) : 0}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        ) : (
-          <p className="mt-3 text-[13px] leading-[18px] text-ink-muted">Nothing yet. Answer one to start the table.</p>
-        )}
+        <section aria-labelledby="by-tier" className="rounded-(--radius-lg) border border-line px-5 pt-4 pb-3">
+          <div className="flex justify-between pb-2 font-mono text-[10px] tracking-[0.14em] text-[#6e6a62]">
+            <h2 id="by-tier">BY TIER</h2>
+            <span aria-hidden="true">CORRECT</span>
+          </div>
+          <ul>
+            {TIER_NAMES.map((name, i) => {
+              const t = i + 1;
+              const row = byTier.find((r) => r.tier === t);
+              const done = row?.attempted ?? 0;
+              const right = row?.correct ?? 0;
+              const current = t === currentTier;
+              return (
+                <li key={name} className="grid grid-cols-[20px_minmax(0,1fr)_56px] items-center gap-2.5 border-t border-[#141418] py-2">
+                  <RankBadge rank={t as Rank} size={18} decorative />
+                  <div className="flex flex-col gap-[5px]">
+                    <span className={`text-[13px] ${current ? "font-semibold" : ""}`} style={{ color: tierColor(t) }}>
+                      {name}
+                      {current && <span className="sr-only"> (current tier)</span>}
+                    </span>
+                    <span aria-hidden="true" className="h-0.5 rounded-full bg-surface-raised">
+                      <span className="block h-0.5 rounded-full" style={{ width: `${done ? (100 * right) / done : 0}%`, background: `var(--rank-${t})` }} />
+                    </span>
+                  </div>
+                  <span className="text-right font-mono text-[12px] text-text-muted tabular-nums">
+                    {right}/{done}
+                    <span className="sr-only"> correct</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+
+        <p className="text-[12px] leading-[18px] text-[#6e6a62]">
+          Every answer here also counts toward your mastery map. Practice never changes your Elo.
+        </p>
       </aside>
     </div>
   );
 }
 
-/** Sentence-case margin label. The page keeps its kickers to "Practice" and "Proof". */
-const note = "text-[13px] leading-[18px] font-semibold text-ink-muted";
-
-const tierLink = (selected: boolean) =>
-  `inline-flex min-h-11 items-center px-2 text-[15px] disabled:opacity-40 ${
-    selected ? "font-extrabold text-ink" : "font-semibold text-ink-muted hover:text-ink"
-  }`;
+const mono = "font-mono text-[11px] tracking-[0.12em] uppercase";
+const card = "rounded-(--radius-lg) border border-line bg-surface";
+const primary =
+  "inline-flex h-11 flex-none cursor-pointer items-center justify-center rounded-(--radius-md) bg-text px-[22px] text-[14px] font-semibold text-bg hover:bg-text/90 disabled:cursor-default disabled:opacity-40";
+const secondary =
+  "inline-flex h-11 flex-none cursor-pointer items-center justify-center rounded-(--radius-md) border border-[#2c2c33] px-5 text-[14px] text-text hover:border-text-muted disabled:cursor-default disabled:opacity-40";
+const quiet = "inline-flex min-h-11 cursor-pointer items-center text-[14px] text-text-muted hover:text-text";
