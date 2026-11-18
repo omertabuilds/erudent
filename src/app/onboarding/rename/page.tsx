@@ -2,9 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { api } from "@/lib/erudent";
 import type { Metadata } from "next";
-import AuthShell from "@/components/AuthShell";
+import AuthShell, { SignOutButton } from "@/components/AuthShell";
 import { RenameView } from "@/components/RenameForm";
-import { SiteHeaderView } from "@/components/SiteHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +25,7 @@ export default async function RenamePage({ searchParams }: { searchParams: Promi
   if (!profile.needs_rename) redirect(next);
 
   return (
-    <AuthShell header={<SiteHeaderView state="setup" />}>
+    <AuthShell aside={<SignOutButton />}>
       <RenameView username={profile.username} />
     </AuthShell>
   );

@@ -9,10 +9,10 @@ import {
   localUsernameProblem,
   type UsernameProblem,
 } from "@/lib/username";
-import { caption, field, label } from "@/components/ui";
+import { authField, authLabel, authNote } from "@/components/ui";
 
 /** A form-level error under the submit button. */
-export const errorClass = "text-[15px] leading-[22px] text-ink";
+export { authError as errorClass } from "@/components/ui";
 
 /**
  * Username state for a form. Rules the browser knows are checked as you type; the
@@ -68,24 +68,36 @@ export function useUsername() {
 const MAX = 20;
 
 /**
- * Label and a live count, the field, then one status line:
- * "✓ Available" in pencil, or what's wrong in ink-muted, then the naming rules.
+ * Mono label (numbered when it's a step) and a live count, the field, then one status line:
+ * "✓ Available" in the Apprentice green, or what's wrong in accent red, then the naming rules.
  */
-export default function UsernameField({ state, autoFocus }: { state: ReturnType<typeof useUsername>; autoFocus?: boolean }) {
+export default function UsernameField({
+  state,
+  autoFocus,
+  step,
+  labelText = "Username",
+}: {
+  state: ReturnType<typeof useUsername>;
+  autoFocus?: boolean;
+  /** "01", "02"…: shown before the label. */
+  step?: string;
+  labelText?: string;
+}) {
   const { value, setValue, problem, checking, available } = state;
   return (
     <div className="flex flex-col">
       <div className="flex items-baseline justify-between gap-4">
-        <label htmlFor="username" className={label}>
-          Username
+        <label htmlFor="username" className={authLabel}>
+          {step && <span className="mr-2 text-text">{step}</span>}
+          {labelText}
         </label>
-        <span className={`${caption} tabular-nums`} aria-hidden="true">
+        <span className={`${authLabel} tabular-nums`} aria-hidden="true">
           {[...value].length}/{MAX}
         </span>
       </div>
       <input
         id="username"
-        className={`${field} mt-2`}
+        className={`${authField} mt-2`}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         maxLength={MAX}
@@ -99,16 +111,16 @@ export default function UsernameField({ state, autoFocus }: { state: ReturnType<
         aria-describedby={problem ? "username-error username-hint" : "username-hint username-status"}
       />
       {problem ? (
-        <p id="username-error" className={`${caption} mt-2 min-h-[18px] font-semibold`} role="alert">
+        <p id="username-error" className={`${authNote} mt-2 min-h-[18px] font-medium text-accent-text`} role="alert">
           <span aria-hidden="true">✗ </span>
           {USERNAME_MESSAGES[problem]}
         </p>
       ) : (
-        <p id="username-status" className={`${caption} mt-2 min-h-[18px] font-semibold`} role="status">
-          {checking ? "Checking…" : available ? <span className="text-pencil">✓ Available</span> : null}
+        <p id="username-status" className={`${authNote} mt-2 min-h-[18px] font-medium`} role="status">
+          {checking ? "Checking…" : available ? <span className="text-[var(--rank-2-text)]">✓ Available</span> : null}
         </p>
       )}
-      <p id="username-hint" className={`${caption} mt-1`}>
+      <p id="username-hint" className={`${authNote} mt-1`}>
         {USERNAME_HINT}
       </p>
     </div>

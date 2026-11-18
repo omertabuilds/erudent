@@ -6,8 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 import { api, friendlyError } from "@/lib/erudent";
 import { usernameProblemFrom } from "@/lib/username";
 import UsernameField, { errorClass, safeNext, useUsername } from "@/components/UsernameField";
-import { BannerArt, Picture, RankTag, hue } from "@/components/ProfileBanner";
-import { caption, field, kicker, label, primary, title } from "@/components/ui";
+import { Steps } from "@/components/AuthShell";
+import { authField, authLabel, authNote, authPrimary, authTitle } from "@/components/ui";
 
 export default function OnboardingForm() {
   const router = useRouter();
@@ -31,78 +31,61 @@ export default function OnboardingForm() {
     }
   }
 
-  return (
-    <div className="grid gap-16 md:grid-cols-12 md:gap-x-8 lg:gap-x-16">
-      <div className="max-w-[480px] min-w-0 md:col-span-7 lg:col-span-6">
-        <p className={kicker}>Step 1 of 1</p>
-        <h1 className={`${title} mt-5`}>Choose your name.</h1>
-        <form onSubmit={submit} className="mt-10 flex flex-col gap-8" noValidate>
-          <UsernameField state={username} autoFocus />
-          <div className="flex flex-col">
-            <label htmlFor="birth-date" className={label}>
-              Birth date
-            </label>
-            <input
-              id="birth-date"
-              type="date"
-              className={`${field} mt-2 text-left tabular-nums scheme-light in-data-[theme=dark]:scheme-dark`}
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-              aria-describedby="birth-date-note"
-            />
-            <p id="birth-date-note" className={`${caption} mt-2`}>
-              Only used to check you&apos;re 13 or older. We don&apos;t save it.
-            </p>
-          </div>
-          <div className="flex flex-col gap-4">
-            <button
-              className={`${primary} w-full cursor-pointer disabled:cursor-not-allowed sm:w-auto sm:min-w-[200px] sm:self-start`}
-              disabled={!username.locallyValid || birthDate === "" || busy}
-            >
-              {busy ? "Saving…" : "Start"}
-            </button>
-            {error && (
-              <p className={errorClass} role="alert">
-                {error}
-              </p>
-            )}
-          </div>
-        </form>
-      </div>
+  // Progress: signed in (done to be here), a name that passes the checks, a birth date.
+  const done = 1 + (username.locallyValid ? 1 : 0) + (birthDate ? 1 : 0);
 
-      <aside className="hidden min-w-0 md:col-span-5 md:col-start-8 md:block lg:col-span-4 lg:col-start-9" aria-hidden="true">
+  return (
+    <div>
+      <Steps total={3} done={done} label="Setup progress" />
+      <p className={`${authLabel} mt-5`}>New player</p>
+      <h1 className={`${authTitle} mt-3`}>Choose your name.</h1>
+      <form onSubmit={submit} className="mt-6 flex flex-col gap-6" noValidate>
+        <UsernameField state={username} autoFocus step="01" />
         <NamePreview name={username.value.trim()} />
-      </aside>
+        <div className="flex flex-col">
+          <label htmlFor="birth-date" className={authLabel}>
+            <span className="mr-2 text-text">02</span>Birth date
+          </label>
+          <input
+            id="birth-date"
+            type="date"
+            className={`${authField} mt-2 text-left tabular-nums scheme-dark`}
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
+            aria-describedby="birth-date-note"
+          />
+          <p id="birth-date-note" className={`${authNote} mt-2`}>
+            Only used to check you&apos;re 13 or older. We don&apos;t save it.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3">
+          <button className={authPrimary} disabled={!username.locallyValid || birthDate === "" || busy}>
+            {busy ? "Saving…" : "Start"}
+          </button>
+          {error && (
+            <p className={errorClass} role="alert">
+              {error}
+            </p>
+          )}
+        </div>
+      </form>
     </div>
   );
 }
 
-/** A compact banner as others will see it: the default graph-paper art, unranked. Saves nothing. */
+/** How others will see you: initial, name, unranked. Saves nothing. */
 function NamePreview({ name }: { name: string }) {
-  const color = hue(0); // the rank accent while unranked
   return (
-    <div className="md:pt-[52px]">
-      <p className="text-[13px] leading-[18px] font-semibold text-ink-muted">How others see you</p>
-      <div className="mt-3 overflow-hidden rounded-(--r-md) border border-hairline bg-surface">
-        <div className="h-20">
-          <BannerArt banner="grid" color={color} />
-        </div>
-        <div className="flex items-start gap-3 px-4 pb-4">
-          <span className="-mt-6 flex">
-            <Picture username={name} url={null} size={48} />
-          </span>
-          <div className="min-w-0 pt-2">
-            <p className={`text-[20px] leading-[26px] font-extrabold tracking-[-0.01em] break-all ${name ? "text-ink" : "text-ink-muted"}`}>
-              @{name || "yourname"}
-            </p>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-              <RankTag rank="Unranked" tier={0} />
-              <span className="text-[13px] text-ink-muted tabular-nums">0W · 0L · 0D</span>
-            </div>
-          </div>
-        </div>
+    <div aria-hidden="true" className="flex items-center gap-3 rounded-(--radius-md) border border-line bg-bg/50 px-3.5 py-3">
+      <span className="flex size-9 flex-none items-center justify-center rounded-full bg-text text-[15px] leading-none font-bold text-bg">
+        {(name || "?").charAt(0).toUpperCase()}
+      </span>
+      <div className="min-w-0">
+        <p className={`truncate text-[15px] leading-5 font-semibold tracking-[-0.02em] ${name ? "text-text" : "text-text-muted"}`}>
+          {name || "yourname"}
+        </p>
+        <p className="font-mono text-[10px] leading-4 tracking-[0.14em] text-text-muted uppercase">Unranked · 10 placement duels</p>
       </div>
-      <p className={`${caption} mt-3`}>Your rank is set after ten ranked duels. Change the banner and accent later on Play.</p>
     </div>
   );
 }

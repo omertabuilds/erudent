@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import AuthShell from "@/components/AuthShell";
+import { authLabel, authNote, authTitle } from "@/components/ui";
 import GoogleSignIn from "@/components/GoogleSignIn";
-import { SiteHeaderView } from "@/components/SiteHeader";
-import { caption, kicker, title } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Sign in — Erudent",
@@ -10,20 +9,16 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <AuthShell header={<SiteHeaderView state="signed-out" />}>
-      <div className="max-w-[640px]">
-        <p className={kicker}>Sign in</p>
-        <h1 className={`${title} mt-5`}>There exists a faster solver than you. Find out who.</h1>
+    <AuthShell>
+      <p className={authLabel}>Sign in</p>
+      <h1 className={`${authTitle} mt-3`}>There exists a faster solver than you. Find out who.</h1>
+      <p className="mt-3 text-[15px] leading-[23px] text-[#b3afa6]">Sign in to play ranked math duels.</p>
+      <div className="mt-6">
+        <GoogleSignIn />
       </div>
-      <div className="max-w-[480px]">
-        <p className="mt-6 text-ink-muted">Sign in to play ranked math duels.</p>
-        <div className="mt-10">
-          <GoogleSignIn />
-        </div>
-        <p className={`${caption} mt-6 border-t border-hairline pt-4`}>
-          Erudent is invite-only for now: you&apos;ll need a code to play. You must be 13 or older.
-        </p>
-      </div>
+      <p className={`${authNote} mt-6 border-t border-line pt-4`}>
+        Erudent is invite-only for now: you&apos;ll need a code to play. You must be 13 or older.
+      </p>
     </AuthShell>
   );
 }

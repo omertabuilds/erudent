@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { primary } from "@/components/ui";
+import { authError, authPrimary } from "@/components/ui";
 
 /** The sign-in button. Google sends the player to /auth/callback, which forwards to `?next=` (default /play). */
 export default function GoogleSignIn() {
@@ -24,15 +24,15 @@ export default function GoogleSignIn() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <button onClick={signIn} disabled={busy} className={`${primary} w-full cursor-pointer gap-3 disabled:cursor-default sm:w-auto sm:min-w-[280px]`}>
-        <span aria-hidden="true" className="text-[17px] leading-none font-extrabold">
+    <div className="flex flex-col gap-3">
+      <button onClick={signIn} disabled={busy} className={`${authPrimary} disabled:cursor-wait`}>
+        <span aria-hidden="true" className="text-[16px] leading-none font-bold">
           G
         </span>
         {busy ? "Opening Google…" : "Continue with Google"}
       </button>
       {error && (
-        <p role="alert" className="text-[15px] leading-[22px]">
+        <p role="alert" className={authError}>
           {error}
         </p>
       )}

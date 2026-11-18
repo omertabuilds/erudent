@@ -3,26 +3,21 @@
 import { useId, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { api, BANNERS, friendlyError, TIER_NAMES, type Banner, type MyPlayer, type ProfileStyle } from "@/lib/erudent";
+import { api, BANNERS, friendlyError, type Banner, type MyPlayer, type ProfileStyle } from "@/lib/erudent";
 import { AVATAR_TYPES, removeAvatar, uploadAvatar } from "@/lib/avatar";
 import { FAR, MID, NEAR, ridge } from "@/components/landing/ridges";
 import Avatar from "@/components/Avatar";
 import { caption, quiet, secondary } from "@/components/ui";
 
 /**
- * A player's banner: preset art tinted with their accent, then an info strip (picture,
- * @username, rank tag, Elo, W · L · D, tagline). The one bordered surface at the top of /play.
- *
- * Standalone so /u/[username] can use it later: pass `editable` only for the signed-in
- * player's own banner, which adds the Customize panel.
+ * The customize panel (picture, banner preset, accent, tagline) used on /play and /u,
+ * plus the banner preset art it previews and the round picture.
  */
 
 export type BannerPlayer = Pick<
   MyPlayer,
   "id" | "username" | "elo" | "matches_played" | "wins" | "losses" | "draws" | "banner" | "accent" | "tagline" | "avatar_path" | "avatar_url"
 >;
-
-const PLACEMENT = 10;
 
 /** Accent 1–6 names, in rank order. Accent 0 = the player's rank hue. */
 export const HUE_NAMES = ["Slate", "Teal", "Blue", "Violet", "Green", "Gold"] as const;
@@ -32,103 +27,9 @@ const BANNER_NAMES: Record<Banner, string> = { grid: "Graph paper", mountain: "T
 export const hue = (n: number) => (n >= 1 && n <= 6 ? `var(--rank-${n})` : "var(--ink-muted)");
 const tint = (color: string, pct: number) => `color-mix(in oklab, ${color} ${pct}%, var(--surface))`;
 
-export default function ProfileBanner({ player, rank, editable = false }: { player: BannerPlayer; rank: string; editable?: boolean }) {
-  const tier = TIER_NAMES.indexOf(rank as (typeof TIER_NAMES)[number]) + 1; // 0 while unranked
-
-  const [saved, setSaved] = useState<ProfileStyle>({ banner: player.banner, accent: player.accent, tagline: player.tagline });
-  const [preview, setPreview] = useState<ProfileStyle | null>(null);
-  const [pictureUrl, setPictureUrl] = useState(player.avatar_url);
-  const [open, setOpen] = useState(false);
-  const panelId = useId();
-
-  // While customizing, the banner above previews the draft.
-  const shown = open && preview ? preview : saved;
-  const accentHue = hue(shown.accent || tier);
-  const placementLeft = Math.max(0, PLACEMENT - player.matches_played);
-
-  function close() {
-    setPreview(null);
-    setOpen(false);
-  }
-
-  return (
-    <section aria-label={`@${player.username}`} className="overflow-hidden rounded-(--r-md) border border-hairline bg-surface">
-      <div className="h-40 md:h-[200px]" aria-hidden="true">
-        <BannerArt banner={shown.banner} color={accentHue} />
-      </div>
-
-      <div className="flex flex-wrap items-end gap-x-6 gap-y-4 px-5 pb-5 md:px-8 md:pb-6">
-        <div className="flex min-w-0 flex-[1_1_320px] items-start gap-4 md:gap-5">
-          {/* Only the picture rides up over the banner's edge; the name sits below it. */}
-          <span className="-mt-7 flex md:-mt-9">
-            <Picture username={player.username} url={pictureUrl} />
-          </span>
-          <div className="min-w-0 pt-3 md:pt-4">
-            <p className="text-[22px] leading-[28px] font-extrabold tracking-[-0.01em] break-all md:text-[28px] md:leading-[32px] md:tracking-[-0.02em]">
-              @{player.username}
-            </p>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-              <RankTag rank={rank} tier={tier} />
-              <span className="text-[15px] text-ink-muted tabular-nums">
-                <span aria-hidden="true">
-                  {player.wins}W · {player.losses}L · {player.draws}D
-                </span>
-                <span className="sr-only">
-                  {player.wins} wins, {player.losses} losses, {player.draws} draws
-                </span>
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 max-sm:w-full max-sm:justify-between">
-          {placementLeft > 0 ? (
-            <p className="text-[17px] font-semibold tabular-nums">
-              {placementLeft} placement {placementLeft === 1 ? "duel" : "duels"} left
-            </p>
-          ) : (
-            <p className="flex items-baseline gap-2">
-              <span className="text-[40px] leading-none font-extrabold tracking-[-0.03em] tabular-nums">{player.elo.toLocaleString("en-US")}</span>
-              <span className="text-[15px] font-semibold text-ink-muted">Elo</span>
-            </p>
-          )}
-          {editable && (
-            <button
-              type="button"
-              onClick={() => (open ? close() : setOpen(true))}
-              aria-expanded={open}
-              aria-controls={panelId}
-              className={secondary}
-            >
-              {open ? "Close" : "Customize"}
-            </button>
-          )}
-        </div>
-
-        {shown.tagline && <p className="w-full text-ink-muted">{shown.tagline}</p>}
-      </div>
-
-      {editable && open && (
-        <CustomizePanel
-          id={panelId}
-          player={{ ...player, ...saved, avatar_url: pictureUrl }}
-          tier={tier}
-          onDraft={setPreview}
-          onSaved={(s) => {
-            setSaved(s);
-            close();
-          }}
-          onPicture={setPictureUrl}
-          onClose={close}
-        />
-      )}
-    </section>
-  );
-}
-
 /**
  * Profile customization: picture (uploads at once), then banner preset, accent and tagline
- * (saved together). Used under the /play banner and under ProfileBanner. The preset and
+ * (saved together). Used under the /play banner and on your own /u profile. The preset and
  * accent are what opponents see on your match card.
  */
 export function CustomizePanel({
@@ -352,18 +253,6 @@ export function Picture({ username, url, size, ring = true }: { username: string
     <span className={`flex flex-none ${edge}`}>
       <span className="flex md:hidden">{img(56)}</span>
       <span className="hidden md:flex">{img(72)}</span>
-    </span>
-  );
-}
-
-/** The rank in its hue: pill, hairline border, no fill. Unranked is ink-muted. */
-export function RankTag({ rank, tier }: { rank: string; tier: number }) {
-  return (
-    <span
-      className="inline-flex h-7 items-center rounded-(--r-pill) border border-hairline px-3 text-[13px] font-semibold"
-      style={{ color: tier ? hue(tier) : "var(--ink-muted)" }}
-    >
-      {rank}
     </span>
   );
 }
