@@ -5,6 +5,7 @@ import { SiteHeaderView } from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import LobbyBanner from "@/components/LobbyBanner";
 import Lobby from "@/components/Lobby";
+import MasteryMap from "@/components/MasteryMap";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +20,11 @@ const ARENAS = ["Code", "Medicine", "Physics"];
 
 export default async function PlayPage() {
   const { supabase, profile } = await requirePlayer("/play");
-  const [{ data: rank }, place, recent] = await Promise.all([
+  const [{ data: rank }, place, recent, mastery] = await Promise.all([
     supabase.rpc("rank_name", { p_elo: profile.elo, p_matches: profile.matches_played }),
     api.playerPlace(supabase, profile.username).catch(() => null),
     api.recentMatches(supabase, profile.username).catch(() => [] as RecentMatch[]),
+    api.mastery(supabase, profile.id).catch(() => []),
   ]);
   // 1–6 once placed; 0 while placement hides the rank ("Unranked").
   const tier = TIER_NAMES.indexOf(rank as (typeof TIER_NAMES)[number]) + 1;
@@ -61,15 +63,7 @@ export default async function PlayPage() {
               <RatingCard recent={recent} elo={profile.elo} />
             </div>
 
-            <section aria-labelledby="mastery-title" className="mt-2">
-              <h2 id="mastery-title" className="font-mono text-[11px] tracking-[0.12em] text-[#6e6a62]">
-                MASTERY
-              </h2>
-              {/* Placeholder: the mastery map lands in its own PR. */}
-              <div className="mt-2 flex aspect-[1200/560] w-full items-center justify-center rounded-(--radius-lg) border border-dashed border-line">
-                <p className="text-[13px] text-text-muted">Your mastery map will appear here.</p>
-              </div>
-            </section>
+            <MasteryMap rows={mastery} />
           </div>
         </div>
       </main>
