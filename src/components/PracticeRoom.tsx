@@ -21,8 +21,12 @@ type Revealed = {
   next: { tier: number; up: boolean } | null;
 };
 
-/** Auto, or one fixed tier. `tier` is where the next question comes from. */
-type Setting = { auto: boolean; tier: number | null };
+/**
+ * Auto, or one fixed tier. `tier` is where the next question comes from.
+ * Auto stays inside min..max; `progress` is 0–1 toward the next tier (null on a fixed tier or before loading).
+ */
+type Setting = { auto: boolean; tier: number | null; min: number; max: number; progress: number | null };
+type Range = { min: number; max: number };
 
 export default function PracticeRoom() {
   const sb = useRef(createClient()).current;
@@ -47,18 +51,18 @@ export default function PracticeRoom() {
   // Ask for a question. The server hands back the unanswered one if there is one,
   // so a tier change only takes effect once it's answered or skipped.
   const load = useCallback(
-    async (tier: number | null, changingTier = false) => {
+    async (tier: number | null, changingTier = false, range: Range | null = null) => {
       setBusy(true);
       setNotice(null);
       setError(null);
       try {
-        const q = await api.nextPracticeQuestion(sb, tier);
+        const q = await api.nextPracticeQuestion(sb, tier, range);
         setEmptyTier(null);
-        setSetting({ auto: q.auto, tier: q.selected_tier });
+        setSetting({ auto: q.auto, tier: q.selected_tier, min: q.min_tier, max: q.max_tier, progress: q.progress });
         setQuestion(q);
         if (q.question_id === pendingId.current) {
           if (changingTier) {
-            const label = q.auto ? "Auto" : tierName(q.selected_tier);
+            const label = q.auto ? `Auto (${rangeLabel(q.min_tier, q.max_tier)})` : tierName(q.selected_tier);
             setNotice(`${label} starts with the next question. Skip to switch now.`);
           }
         } else {
@@ -90,7 +94,7 @@ export default function PracticeRoom() {
       .practiceStats(sb)
       .then((s) => {
         setStats(s);
-        setSetting({ auto: s.auto, tier: s.tier });
+        setSetting({ auto: s.auto, tier: s.tier, min: s.min_tier, max: s.max_tier, progress: null });
         return load(s.auto ? null : s.tier);
       })
       .catch((e) => setError(friendlyError(e)));
@@ -133,7 +137,7 @@ export default function PracticeRoom() {
       next: moved ? { tier: r.tier, up: r.tier > prev } : null,
     });
     pendingId.current = null;
-    setSetting((s) => (s ? { ...s, tier: r.tier } : s)); // auto may have moved
+    setSetting((s) => (s ? { ...s, tier: r.tier, progress: r.progress } : s)); // auto may have moved
     refreshStats();
   }
 
@@ -170,6 +174,15 @@ export default function PracticeRoom() {
     if (busy || !setting) return;
     if (tier === null ? setting.auto : !setting.auto && setting.tier === tier) return;
     load(tier, true);
+  }
+
+  // Auto range. Moving one end past the other drags it along.
+  function pickRange(end: "min" | "max", t: number) {
+    if (busy || !setting) return;
+    const min = end === "min" ? t : Math.min(setting.min, t);
+    const max = end === "max" ? t : Math.max(setting.max, t);
+    if (setting.auto && min === setting.min && max === setting.max) return;
+    load(null, true, { min, max });
   }
 
 
@@ -221,6 +234,31 @@ export default function PracticeRoom() {
           })}
         </div>
 
+        {setting?.auto && (
+          <div className="flex flex-wrap items-center gap-2 text-[13px] text-text-muted">
+            <span>Auto stays between</span>
+            {(["min", "max"] as const).map((end, i) => (
+              <span key={end} className="flex items-center gap-2">
+                {i === 1 && <span>and</span>}
+                <select
+                  aria-label={end === "min" ? "Easiest tier" : "Hardest tier"}
+                  value={setting[end]}
+                  onChange={(e) => pickRange(end, Number(e.target.value))}
+                  disabled={busy}
+                  className="h-8 cursor-pointer rounded-[6px] border border-line bg-surface px-2 text-[13px] font-medium disabled:cursor-default"
+                  style={{ color: tierColor(setting[end]) }}
+                >
+                  {TIER_NAMES.map((name, t) => (
+                    <option key={name} value={t + 1}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </span>
+            ))}
+          </div>
+        )}
+
         {error && !question ? (
           <section className={`${card} flex flex-col items-start gap-6 p-8`}>
             <p>{error}</p>
@@ -245,6 +283,27 @@ export default function PracticeRoom() {
                 </span>
                 <span>{setting?.auto ? "Auto · adjusts to your results" : "Fixed tier"}</span>
               </div>
+
+              {setting?.auto && setting.progress !== null && setting.tier !== null && setting.tier < setting.max && (
+                <div className="flex items-center gap-3 font-mono text-[11px] text-[#6e6a62]">
+                  <span
+                    role="progressbar"
+                    aria-label={`Progress to ${tierName(setting.tier + 1)}`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(setting.progress * 100)}
+                    className="h-1 flex-1 rounded-full bg-surface-raised"
+                  >
+                    <span
+                      className="block h-1 rounded-full transition-[width] duration-300"
+                      style={{ width: `${setting.progress * 100}%`, background: `var(--rank-${setting.tier + 1})` }}
+                    />
+                  </span>
+                  <span aria-hidden="true">
+                    TO <span style={{ color: tierColor(setting.tier + 1) }}>{tierName(setting.tier + 1).toUpperCase()}</span>
+                  </span>
+                </div>
+              )}
 
               <p className="font-mono text-[22px] leading-[34px] whitespace-pre-wrap">{question.prompt}</p>
 
@@ -444,6 +503,9 @@ export default function PracticeRoom() {
     </div>
   );
 }
+
+const rangeLabel = (min: number, max: number) =>
+  min === 1 && max === 6 ? "all tiers" : min === max ? tierName(min) : `${tierName(min)}–${tierName(max)}`;
 
 const mono = "font-mono text-[11px] tracking-[0.12em] uppercase";
 const card = "rounded-(--radius-lg) border border-line bg-surface";

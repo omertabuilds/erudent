@@ -3,7 +3,7 @@
 Ranked 1v1 math duels. Three questions, five minutes. Climb from Novice to Erudite.
 
 **Practice** (`/practice`): solo, unrated, endless. One question at a time with the answer and
-solution after each. Pick a tier or let it adjust to you. No timer, and your Elo never changes.
+solution after each. Pick a tier, or let it adjust to you inside a range you choose. No timer, and your Elo never changes.
 
 Built by **omertà**. Launching December 13, 2026.
 
