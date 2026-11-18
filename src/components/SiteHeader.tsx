@@ -15,7 +15,7 @@ const small = "inline-flex min-h-11 cursor-pointer items-center px-1.5 sm:px-2 t
 export type HeaderState = "signed-out" | "no-access" | "player" | "setup";
 
 /**
- * Lockup left; Rules and the action for this visitor right.
+ * Lockup left; Rules, Rankings and the action for this visitor right.
  * - signed out → Sign in
  * - signed in with a redeemed code → Play
  * - signed in without one → Enter code (opens the code tab below) and Sign out,
@@ -23,17 +23,19 @@ export type HeaderState = "signed-out" | "no-access" | "player" | "setup";
  * - signed in, still choosing a username (onboarding, rename) → Sign out only
 
  */
-export default async function SiteHeader() {
+export default async function SiteHeader({ current }: { current?: Current } = {}) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const access = user ? await api.hasAccess(supabase).catch(() => false) : false;
-  return <SiteHeaderView state={!user ? "signed-out" : access ? "player" : "no-access"} />;
+  return <SiteHeaderView state={!user ? "signed-out" : access ? "player" : "no-access"} current={current} />;
 }
 
 /** `current` marks the page you're on: its link drops the button look and gets aria-current. */
-export function SiteHeaderView({ state, current }: { state: HeaderState; current?: "play" }) {
+type Current = "play" | "rankings";
+
+export function SiteHeaderView({ state, current }: { state: HeaderState; current?: Current }) {
   return (
     <header className={`relative z-10 flex items-center justify-between gap-2 py-5 sm:gap-3 ${gutter}`}>
       <Link href="/" className="flex flex-none items-center gap-2 sm:gap-3">
@@ -43,6 +45,13 @@ export function SiteHeaderView({ state, current }: { state: HeaderState; current
       <nav className="flex items-center sm:gap-2" aria-label="Site">
         <Link href="/rules" className={`${link} ${state === "no-access" ? "max-sm:hidden" : ""}`}>
           Rules
+        </Link>
+        <Link
+          href="/rankings"
+          aria-current={current === "rankings" ? "page" : undefined}
+          className={`${link} aria-[current=page]:text-ink ${state === "no-access" ? "max-sm:hidden" : ""}`}
+        >
+          Rankings
         </Link>
         {state === "signed-out" && (
           <Link href="/login?next=/play" className={action}>
