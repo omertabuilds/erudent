@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { api, friendlyError } from "@/lib/erudent";
+import { useFriendGame } from "@/lib/useFriendGame";
 import QueueWarmup from "@/components/QueueWarmup";
 
 const POLL_MS = 2000;
@@ -35,17 +36,10 @@ export default function Lobby() {
   /** The ranked match the queue returned, held for FOUND_HOLD_MS before opening it. */
   const [found, setFound] = useState<string | null>(null);
   const [foundLeft, setFoundLeft] = useState(0);
-  const [friendCode, setFriendCode] = useState<{ match_id: string; code: string } | null>(null);
+  const { friendCode, createFriend, copy, copied, inviteLink, error, setError } = useFriendGame(sb);
   const [joinCode, setJoinCode] = useState("");
-  const [copied, setCopied] = useState<"link" | "code" | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"ranked" | "unranked">("ranked");
   const queuedAt = useRef(0);
-  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => () => {
-    if (copiedTimer.current) clearTimeout(copiedTimer.current);
-  }, []);
 
   // If you closed the tab mid-match, send you back in.
   useEffect(() => {
@@ -82,7 +76,7 @@ export default function Lobby() {
       stopped = true;
       clearTimeout(timer);
     };
-  }, [searching, sb, router]);
+  }, [searching, sb, router, setError]);
 
   // Time in queue, once a second, separate from the poll so a slow request doesn't stall it.
   useEffect(() => {
@@ -103,16 +97,6 @@ export default function Lobby() {
     };
   }, [found, router]);
 
-  // Friend game: wait for the friend to join.
-  useEffect(() => {
-    if (!friendCode) return;
-    const t = setInterval(async () => {
-      const m = await api.getMatch(sb, friendCode.match_id).catch(() => null);
-      if (m && m.status !== "waiting") router.push(`/match/${m.id}`);
-    }, POLL_MS);
-    return () => clearInterval(t);
-  }, [friendCode, sb, router]);
-
   function startSearch() {
     setError(null);
     setFound(null);
@@ -127,15 +111,6 @@ export default function Lobby() {
     await api.leaveQueue(sb).catch(() => {});
   }
 
-  async function createFriend() {
-    setError(null);
-    try {
-      setFriendCode(await api.createFriendMatch(sb));
-    } catch (e) {
-      setError(friendlyError(e));
-    }
-  }
-
   async function joinFriend(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -145,19 +120,6 @@ export default function Lobby() {
       setError(friendlyError(err));
     }
   }
-
-  function copy(what: "link" | "code", text: string) {
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        if (copiedTimer.current) clearTimeout(copiedTimer.current);
-        setCopied(what);
-        copiedTimer.current = setTimeout(() => setCopied(null), 2000);
-      })
-      .catch(() => {});
-  }
-
-  const inviteLink = friendCode ? `${typeof window !== "undefined" ? window.location.origin : ""}/join/${friendCode.code}` : "";
 
   // The switch locks while you're queued or holding a friend code, so neither is left running unseen.
   const locked = searching || !!friendCode;
