@@ -7,9 +7,9 @@ export const metadata: Metadata = {
   title: "Rules — Erudent",
 };
 
-function Rule({ title, first, children }: { title: string; first?: boolean; children: ReactNode }) {
+function Rule({ title, first, id, children }: { title: string; first?: boolean; id?: string; children: ReactNode }) {
   return (
-    <section className={first ? "" : "border-t border-hairline pt-8"}>
+    <section id={id} className={`scroll-mt-6 ${first ? "" : "border-t border-hairline pt-8"}`}>
       <h2 className="mb-3 text-lg font-semibold">{title}</h2>
       <div className="space-y-3 leading-relaxed text-ink-muted">{children}</div>
     </section>
@@ -42,6 +42,19 @@ export default function RulesPage() {
             </ul>
             <p>Maximum 6. All or nothing: a problem is right or it&apos;s worth 0. Your level comes from the average rating of both players.</p>
             <p>Your rank stays hidden until you finish 10 placement matches.</p>
+          </Rule>
+
+          <Rule title="Ranks" id="ranks">
+            <p>Your Elo sets your rank. Wins move it up, losses move it down.</p>
+            <ul className="list-disc space-y-1 pl-5">
+              <li>Novice: under 700</li>
+              <li>Apprentice: 700 to 899</li>
+              <li>Scholar: 900 to 1099</li>
+              <li>Savant: 1100 to 1299</li>
+              <li>Sage: 1300 to 1499</li>
+              <li>Erudite: 1500 and up</li>
+            </ul>
+            <p>You appear in the rankings after 10 ranked matches.</p>
           </Rule>
 
           <Rule title="Answers">
