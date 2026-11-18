@@ -253,6 +253,16 @@ export const api = {
   skipPracticeQuestion: (sb: SupabaseClient) => call<PracticeResult>(sb, "skip_practice_question"),
   /** Signed in. All-time numbers plus the saved tier setting. */
   practiceStats: (sb: SupabaseClient) => call<PracticeStats>(sb, "practice_stats"),
+  /**
+   * One row per (topic, tier) answered: finished rated duels plus practice; skips count as attempted.
+   * Defaults to the caller. Works signed out for any player id.
+   */
+  mastery: (sb: SupabaseClient, userId?: string) =>
+    call<{ topic: string; tier: number; attempted: number; correct: number }[]>(
+      sb,
+      "get_mastery",
+      userId ? { p_user: userId } : undefined,
+    ),
   /** Signed in. Only questions you've answered or skipped in practice. */
   reportPracticeQuestion: (sb: SupabaseClient, questionId: string, reason: string) =>
     call<void>(sb, "report_practice_question", { p_question: questionId, p_reason: reason }),
