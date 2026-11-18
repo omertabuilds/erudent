@@ -146,7 +146,8 @@ describe("ranked match", () => {
     // Bob sees that Alice solved A, but not her answer
     const bobView = await rpc<MatchState>(db, b, "get_match", [mid]);
     expect(bobView.opponent?.solved).toEqual(["A"]);
-    expect(JSON.stringify(bobView.opponent)).not.toContain(await answerFor(db, mid, "A"));
+    // Answers are JSON strings: look for the quoted value (a bare "202" also matches timestamps like 2026-…).
+    expect(JSON.stringify(bobView.opponent)).not.toContain(JSON.stringify(await answerFor(db, mid, "A")));
 
     await rpc(db, a, "submit_answer", [mid, "B", await answerFor(db, mid, "B")]);
     await rpc(db, a, "submit_answer", [mid, "C", "1"]); // wrong

@@ -51,9 +51,6 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
   const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const finishing = useRef(false);
-  /** When each slot was solved, in ms after the start, as this tab saw it. Lost on reload. */
-  const [solvedAt, setSolvedAt] = useState<Record<string, number>>({});
-  const lastSeen = useRef<MatchState | null>(null);
   const [places, setPlaces] = useState<Record<string, number | null>>({});
   const [focusView, setFocusView] = useState(false);
   const [workspace, setWorkspace] = useState<"scratch" | "draw">("scratch");
@@ -70,18 +67,6 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
       // Assume the server stamped its time halfway through the request.
       const off = new Date(m.server_now).getTime() - (before + after) / 2;
       setOffset(off);
-      // Solve times: a slot that turns solved between two polls gets "now". The first load has
-      // nothing to compare with, so anything already solved then shows without a time.
-      const prev = lastSeen.current;
-      lastSeen.current = m;
-      if (prev && m.started_at) {
-        const at = after + off - new Date(m.started_at).getTime();
-        const was = new Set([...prev.me.answers.filter((a) => a.correct).map((a) => `me:${a.slot}`), ...(prev.opponent?.solved ?? []).map((s) => `opp:${s}`)]);
-        const fresh = [...m.me.answers.filter((a) => a.correct).map((a) => `me:${a.slot}`), ...(m.opponent?.solved ?? []).map((s) => `opp:${s}`)].filter(
-          (k) => !was.has(k),
-        );
-        if (fresh.length) setSolvedAt((t) => ({ ...Object.fromEntries(fresh.map((k) => [k, at])), ...t }));
-      }
       setMatch(m);
     } catch (e) {
       setLoadError(friendlyError(e));
@@ -221,6 +206,16 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
     }
   }
 
+  async function forfeitDuel() {
+    try {
+      const r = await api.forfeitMatch(sb, matchId);
+      if (r.status === "time_up") setNotice("Time's up.");
+    } catch (err) {
+      setNotice(friendlyError(err));
+    }
+    await refresh();
+  }
+
   // ── Render ────────────────────────────────────────────────────────
 
   if (loadError || !match) {
@@ -260,7 +255,7 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
   const finished = phase === "finished";
   const live = phase === "live";
   const focused = focusView && live;
-  const sides = buildSides(sb, match, points, finished, places, solvedAt, live ? slot : null);
+  const sides = buildSides(sb, match, points, finished, places, live ? slot : null);
   const modeLabel =
     match.mode === "friend" ? "Friend duel · Mathematics" : match.mode === "async" ? "Ranked duel · Recorded run" : "Ranked duel · Mathematics";
   const width = focused ? "max-w-[960px]" : "max-w-[640px]";
@@ -437,18 +432,23 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
           </Link>
           <span className="truncate">{modeLabel}</span>
         </div>
-        {live && (
-          <button
-            type="button"
-            onClick={toggleFocusView}
-            aria-pressed={focused}
-            className={`flex h-[30px] flex-none cursor-pointer items-center gap-2 rounded-[6px] border border-[#2c2c33] px-3 ${mono} text-[#d6d2c9] hover:border-text-muted`}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d={focused ? "M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6" : "M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6"} />
-            </svg>
-            {focused ? "Exit focus" : "Focus"}
-          </button>
+        {(live || phase === "countdown") && (
+          <div className="flex flex-none items-center gap-2">
+            <ForfeitButton onConfirm={forfeitDuel} />
+            {live && (
+              <button
+                type="button"
+                onClick={toggleFocusView}
+                aria-pressed={focused}
+                className={`flex h-[30px] flex-none cursor-pointer items-center gap-2 rounded-[6px] border border-[#2c2c33] px-3 ${mono} text-[#d6d2c9] hover:border-text-muted`}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d={focused ? "M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6" : "M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6"} />
+                </svg>
+                {focused ? "Exit focus" : "Focus"}
+              </button>
+            )}
+          </div>
         )}
       </header>
 
@@ -478,6 +478,63 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
         </div>
       </main>
     </div>
+  );
+}
+
+// ── Forfeit ─────────────────────────────────────────────────────────
+
+/**
+ * Top-bar Forfeit with a confirm. An in-page <dialog>, not window.confirm(): a native prompt blurs
+ * the window, which focus mode would report as leaving the match.
+ */
+function ForfeitButton({ onConfirm }: { onConfirm: () => Promise<void> }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const [busy, setBusy] = useState(false);
+
+  async function confirm() {
+    setBusy(true);
+    try {
+      await onConfirm();
+    } finally {
+      setBusy(false);
+      dialog.current?.close();
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => dialog.current?.showModal()}
+        className={`flex h-[30px] cursor-pointer items-center rounded-[6px] border border-[#2c2c33] px-3 ${mono} text-[#d6d2c9] hover:border-accent-text hover:text-accent-text`}
+      >
+        Forfeit
+      </button>
+      <dialog
+        ref={dialog}
+        aria-labelledby={titleId}
+        className="m-auto w-[min(400px,calc(100vw-32px))] rounded-(--radius-lg) border border-line bg-surface p-6 text-text backdrop:bg-black/60"
+      >
+        <h2 id={titleId} className="text-[19px] leading-[26px] font-semibold tracking-[-0.02em]">
+          Forfeit this duel?
+        </h2>
+        <p className="mt-2 text-[15px] leading-[22px] text-text-muted">It counts as a loss.</p>
+        <div className="mt-6 flex flex-wrap justify-end gap-3">
+          <button type="button" autoFocus onClick={() => dialog.current?.close()} className={secondary}>
+            Keep playing
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={confirm}
+            className="inline-flex h-11 cursor-pointer items-center justify-center rounded-(--radius-md) bg-accent px-5 text-[15px] font-semibold text-on-accent hover:bg-accent/90 disabled:cursor-default disabled:opacity-40"
+          >
+            {busy ? "Forfeiting…" : "Forfeit"}
+          </button>
+        </div>
+      </dialog>
+    </>
   );
 }
 
@@ -517,11 +574,15 @@ function buildSides(
   points: (s: Slot) => number,
   finished: boolean,
   places: Record<string, number | null>,
-  solvedAt: Record<string, number>,
   working: Slot | null,
 ) {
   const tierOf = (rank: string) => TIER_NAMES.indexOf(rank as (typeof TIER_NAMES)[number]) + 1;
-  const solvedText = (key: string) => (key in solvedAt ? `SOLVED ${elapsed(solvedAt[key])}` : "SOLVED");
+  // Solve times are the server's stamps, measured from the match start.
+  const start = m.started_at ? Date.parse(m.started_at) : NaN;
+  const solvedText = (at: string | undefined) => {
+    const ms = at ? Date.parse(at) - start : NaN;
+    return Number.isFinite(ms) ? `SOLVED ${elapsed(ms)}` : "SOLVED";
+  };
   const myAnswers = new Map(m.me.answers.map((a) => [a.slot, a]));
   const meTier = tierOf(m.me.rank);
   const meMarks = Object.fromEntries(
@@ -548,7 +609,7 @@ function buildSides(
       const a = myAnswers.get(s);
       const text = a
         ? a.correct
-          ? solvedText(`me:${s}`)
+          ? solvedText(a.answered_at)
           : a.answer === null
             ? "FORFEITED"
             : "MISSED"
@@ -583,7 +644,7 @@ function buildSides(
     marks: Object.fromEntries(SLOTS.map((s) => [s, o.solved.includes(s) ? "solved" : finished ? "missed" : null])) as Record<Slot, Mark>,
     statuses: SLOTS.map((s) => {
       const solved = o.solved.includes(s);
-      const text = solved ? solvedText(`opp:${s}`) : finished ? "MISSED" : "—";
+      const text = solved ? solvedText(o.solved_at?.[s]) : finished ? "MISSED" : "—";
       return { slot: s, points: points(s), text, tone: solved ? "on" : finished ? "mid" : "off" };
     }),
     ghost: o.is_ghost,
@@ -861,8 +922,11 @@ function Results({ match, matchId, points, width }: { match: MatchState; matchId
   const me = match.me;
   const opp = match.opponent;
   const eloChange = me.elo_after !== null ? me.elo_after - me.elo_before : 0;
-  const forfeitNote =
-    match.forfeited_by ? (match.forfeited_by === me.user_id ? "You disconnected." : "Your opponent disconnected.") : null;
+  const forfeitNote = !match.forfeited_by
+    ? null
+    : match.forfeited_by === me.user_id
+      ? match.resigned ? "You forfeited." : "You disconnected."
+      : match.resigned ? "Your opponent forfeited." : "Your opponent disconnected.";
   const mySolved = me.answers.filter((a) => a.correct).length;
   const title = headline(
     me.result,
