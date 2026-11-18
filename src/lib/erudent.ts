@@ -138,12 +138,15 @@ export type PracticeQuestion = {
   prompt: string;
   auto: boolean; // auto tier on?
   selected_tier: number; // tier the next question comes from (can differ from `tier` right after a switch)
+  min_tier: number; // auto stays inside min_tier..max_tier
+  max_tier: number;
+  progress: number | null; // auto: 0–1 toward the next tier. null on a fixed tier
 };
 
 export type PracticeResult =
   | { status: "invalid_format" } // not an integer or fraction: the question isn't used up
   | { status: "no_question" }
-  | { status: "ok"; correct: boolean; answer: string; solution: string; streak: number; tier: number };
+  | { status: "ok"; correct: boolean; answer: string; solution: string; streak: number; tier: number; progress: number | null };
 
 export type PracticeStats = {
   attempted: number; // skips count as attempted
@@ -152,6 +155,8 @@ export type PracticeStats = {
   best_streak: number;
   auto: boolean;
   tier: number | null; // null until you've practiced once
+  min_tier: number;
+  max_tier: number;
   by_tier: { tier: number; attempted: number; correct: number }[];
 };
 
@@ -211,9 +216,12 @@ export const api = {
   renameUsername: (sb: SupabaseClient, username: string) => call(sb, "rename_username", { p_username: username }),
 
   // Practice: solo, unrated, no timer.
-  /** Signed in. Tier 1–6 stays on that tier; null = auto. Same question until it's answered or skipped. */
-  nextPracticeQuestion: (sb: SupabaseClient, tier: number | null) =>
-    call<PracticeQuestion>(sb, "next_practice_question", { p_tier: tier }),
+  /**
+   * Signed in. Tier 1–6 stays on that tier; null = auto, inside the range (null range = keep the saved one).
+   * Same question until it's answered or skipped.
+   */
+  nextPracticeQuestion: (sb: SupabaseClient, tier: number | null, range: { min: number; max: number } | null = null) =>
+    call<PracticeQuestion>(sb, "next_practice_question", { p_tier: tier, p_min: range?.min ?? null, p_max: range?.max ?? null }),
   /** Signed in. Wrong format doesn't use up the question. */
   submitPracticeAnswer: (sb: SupabaseClient, answer: string) =>
     call<PracticeResult>(sb, "submit_practice_answer", { p_answer: answer }),
@@ -253,6 +261,7 @@ export function friendlyError(e: unknown): string {
     in_match: "Finish your match first.",
     not_attempted: "You can only report questions you've answered.",
     invalid_tier: "Pick a tier from 1 to 6.",
+    invalid_range: "The lowest tier can't be above the highest.",
     no_profile: "Finish setting up your profile first.",
     not_participant: "You're not in this match.",
     not_signed_in: "Sign in first.",

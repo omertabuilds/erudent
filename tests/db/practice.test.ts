@@ -3,8 +3,26 @@ import { asUser, createDb, makeUser, rpc, seedQuestions, type Db } from "./harne
 
 // Practice mode: solo, unrated, endless. One question at a time, answers revealed only after an attempt.
 
-type Served = { question_id: string; tier: number; topic: string; prompt: string; auto: boolean; selected_tier: number };
-type Result = { status: string; correct?: boolean; answer?: string; solution?: string; streak?: number; tier?: number };
+type Served = {
+  question_id: string;
+  tier: number;
+  topic: string;
+  prompt: string;
+  auto: boolean;
+  selected_tier: number;
+  min_tier: number;
+  max_tier: number;
+  progress: number | null;
+};
+type Result = {
+  status: string;
+  correct?: boolean;
+  answer?: string;
+  solution?: string;
+  streak?: number;
+  tier?: number;
+  progress?: number | null;
+};
 type Stats = {
   attempted: number;
   correct: number;
@@ -12,6 +30,8 @@ type Stats = {
   best_streak: number;
   auto: boolean;
   tier: number | null;
+  min_tier: number;
+  max_tier: number;
   by_tier: { tier: number; attempted: number; correct: number }[];
 };
 
@@ -22,7 +42,8 @@ beforeEach(async () => {
   await seedQuestions(db, 5, "practice");
 });
 
-const next = (uid: string, tier: number | null = null) => rpc<Served>(db, uid, "next_practice_question", [tier]);
+const next = (uid: string, tier: number | null = null, min: number | null = null, max: number | null = null) =>
+  rpc<Served>(db, uid, "next_practice_question", [tier, min, max]);
 const submit = (uid: string, answer: string) => rpc<Result>(db, uid, "submit_practice_answer", [answer]);
 const skip = (uid: string) => rpc<Result>(db, uid, "skip_practice_question");
 const stats = (uid: string) => rpc<Stats>(db, uid, "practice_stats");
@@ -84,7 +105,9 @@ describe("serving questions", () => {
   test("the payload has no answer or solution", async () => {
     const uid = await makeUser(db, "alice");
     const q = await next(uid);
-    expect(Object.keys(q).sort()).toEqual(["auto", "prompt", "question_id", "selected_tier", "tier", "topic"]);
+    expect(Object.keys(q).sort()).toEqual([
+      "auto", "max_tier", "min_tier", "progress", "prompt", "question_id", "selected_tier", "tier", "topic",
+    ]);
     expect(JSON.stringify(q)).not.toMatch(/because/); // seeded solution text
   });
 
@@ -137,7 +160,7 @@ describe("answering", () => {
     await next(uid, 2);
     const right = await servedAnswer(uid);
     const r = await submit(uid, right);
-    expect(r).toEqual({ status: "ok", correct: true, answer: right, solution: "because", streak: 1, tier: 2 });
+    expect(r).toEqual({ status: "ok", correct: true, answer: right, solution: "because", streak: 1, tier: 2, progress: null });
   });
 
   test("wrong answer: marked wrong, answer revealed, streak reset", async () => {
@@ -180,7 +203,7 @@ describe("answering", () => {
     const q = await next(uid, 3);
     const right = await servedAnswer(uid);
     const r = await skip(uid);
-    expect(r).toEqual({ status: "ok", correct: false, answer: right, solution: "because", streak: 0, tier: 3 });
+    expect(r).toEqual({ status: "ok", correct: false, answer: right, solution: "because", streak: 0, tier: 3, progress: null });
     const a = await db.query(`select answer, correct from practice_attempts where question_id = $1`, [q.question_id]);
     expect(a.rows).toEqual([{ answer: null, correct: false }]);
   });
@@ -206,15 +229,45 @@ describe("tiers", () => {
     expect(q).toMatchObject({ tier: 4, auto: true, selected_tier: 4 });
   });
 
-  test("auto: up after 2 right in a row, down after 1 wrong", async () => {
+  test("auto: up after a run of right answers, and one miss after moving up doesn't bounce you back", async () => {
+    const uid = await makeUser(db, "alice", 900); // tier 3, level 3.25
+    for (let i = 0; i < 5; i++) expect((await answerRight(uid)).tier).toBe(3);
+    const up = await answerRight(uid); // 6th in a row
+    expect(up.tier).toBe(4);
+    expect(up.progress).toBe(0.05);
+    expect((await answerWrong(uid)).tier).toBe(4); // one miss: still Savant
+    expect((await answerWrong(uid)).tier).toBe(3); // two: back down
+    expect((await answerWrong(uid)).tier).toBe(3); // the cushion again: no free fall
+  });
+
+  test("auto progress climbs toward the next tier", async () => {
+    const uid = await makeUser(db, "alice", 900);
+    expect((await next(uid)).progress).toBe(0.25);
+    const a = await answerRight(uid);
+    const b = await answerRight(uid);
+    expect(a.progress!).toBeGreaterThan(0.25);
+    expect(b.progress!).toBeGreaterThan(a.progress!);
+  });
+
+  test("auto range: stays inside it, saved for next time, level carries over", async () => {
     const uid = await makeUser(db, "alice", 900); // tier 3
-    expect((await answerRight(uid)).tier).toBe(3);
-    expect((await answerRight(uid)).tier).toBe(4);
-    expect((await next(uid)).tier).toBe(4);
+    expect(await next(uid, null, 4, 6)).toMatchObject({ tier: 4, min_tier: 4, max_tier: 6, progress: 0 });
+    for (let i = 0; i < 4; i++) expect((await answerWrong(uid)).tier).toBe(4); // floor of the range
+    expect(await next(uid)).toMatchObject({ min_tier: 4, max_tier: 6 }); // nulls keep the saved range
     await skip(uid);
-    expect((await next(uid)).tier).toBe(3);
-    expect((await answerRight(uid)).tier).toBe(3); // the run restarts after a move
-    expect((await answerWrong(uid)).tier).toBe(2);
+    expect(await stats(uid)).toMatchObject({ auto: true, min_tier: 4, max_tier: 6 });
+
+    const low = await next(uid, null, 1, 2); // pulled down into the new range
+    expect(low).toMatchObject({ tier: 2, selected_tier: 2, min_tier: 1, max_tier: 2 });
+    await skip(uid);
+    for (let i = 0; i < 8; i++) expect((await answerRight(uid)).tier).toBeLessThanOrEqual(2); // ceiling
+  });
+
+  test("bad ranges are refused", async () => {
+    const uid = await makeUser(db, "alice");
+    await expect(next(uid, null, 5, 2)).rejects.toThrow("invalid_range");
+    await expect(next(uid, null, 0, 3)).rejects.toThrow("invalid_tier");
+    await expect(next(uid, null, 2, 7)).rejects.toThrow("invalid_tier");
   });
 
   test("auto stays within 1–6", async () => {
@@ -250,7 +303,9 @@ describe("tiers", () => {
 describe("stats", () => {
   test("totals, streaks and per-tier counts", async () => {
     const uid = await makeUser(db, "alice");
-    expect(await stats(uid)).toEqual({ attempted: 0, correct: 0, streak: 0, best_streak: 0, auto: true, tier: null, by_tier: [] });
+    expect(await stats(uid)).toEqual({
+      attempted: 0, correct: 0, streak: 0, best_streak: 0, auto: true, tier: null, min_tier: 1, max_tier: 6, by_tier: [],
+    });
 
     await answerRight(uid, 1);
     await answerRight(uid, 1);
@@ -267,6 +322,8 @@ describe("stats", () => {
       best_streak: 3,
       auto: false,
       tier: 4,
+      min_tier: 1,
+      max_tier: 6,
       by_tier: [
         { tier: 1, attempted: 2, correct: 2 },
         { tier: 2, attempted: 2, correct: 1 },
