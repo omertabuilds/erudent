@@ -1,29 +1,45 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import SiteHeader, { gutter } from "@/components/SiteHeader";
+import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import RankBadge, { type Rank } from "@/components/RankBadge";
 
 export const metadata: Metadata = {
   title: "Rules — Erudent",
 };
 
+/** Ranks I–VI and where each starts, as public.tier_for_elo draws them. */
+const RANKS = [
+  { name: "Novice", range: "under 700" },
+  { name: "Apprentice", range: "700 to 899" },
+  { name: "Scholar", range: "900 to 1099" },
+  { name: "Savant", range: "1100 to 1299" },
+  { name: "Sage", range: "1300 to 1499" },
+  { name: "Erudite", range: "1500 and up" },
+];
+
+const code = "rounded-(--radius-sm) bg-surface-raised px-1.5 py-0.5 font-mono text-[14px] text-text";
+
+/** A mono section label over plain reading text, hairline between sections. */
 function Rule({ title, first, id, children }: { title: string; first?: boolean; id?: string; children: ReactNode }) {
   return (
-    <section id={id} className={`scroll-mt-6 ${first ? "" : "border-t border-hairline pt-8"}`}>
-      <h2 className="mb-3 text-lg font-semibold">{title}</h2>
-      <div className="space-y-3 leading-relaxed text-ink-muted">{children}</div>
+    <section id={id} className={`scroll-mt-6 ${first ? "" : "border-t border-line pt-8"}`}>
+      <h2 className="mb-3 font-mono text-[11px] leading-4 font-normal tracking-[0.14em] text-text-muted uppercase">
+        {title}
+      </h2>
+      <div className="space-y-3 text-[17px] leading-[27px] text-[#d6d2c9] [&_li]:marker:text-text-muted">{children}</div>
     </section>
   );
 }
 
 export default function RulesPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-paper font-ui text-[17px] leading-[26px] text-ink">
+    <div className="flex min-h-screen flex-col bg-bg font-ui text-[17px] leading-[26px] text-text">
       <SiteHeader />
 
-      <main className={`mx-auto w-full max-w-[760px] flex-[1_0_auto] py-12 sm:py-16 ${gutter}`}>
-        <p className="mb-4 text-sm text-ink-muted">Rules</p>
-        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Three problems. Five minutes.</h1>
+      <main className="mx-auto w-full max-w-[680px] flex-[1_0_auto] px-4 pt-8 pb-16 md:pt-12 md:pb-24">
+        <p className="font-mono text-[11px] tracking-[0.14em] text-text-muted">RULES</p>
+        <h1 className="mt-1.5 text-[40px] leading-[44px] font-semibold tracking-[-0.045em] text-balance">Three problems. Five minutes.</h1>
 
         <div className="mt-12 space-y-8">
           <Rule title="The duel" first>
@@ -46,23 +62,26 @@ export default function RulesPage() {
 
           <Rule title="Ranks" id="ranks">
             <p>Your Elo sets your rank. Wins move it up, losses move it down.</p>
-            <ul className="list-disc space-y-1 pl-5">
-              <li>Novice: under 700</li>
-              <li>Apprentice: 700 to 899</li>
-              <li>Scholar: 900 to 1099</li>
-              <li>Savant: 1100 to 1299</li>
-              <li>Sage: 1300 to 1499</li>
-              <li>Erudite: 1500 and up</li>
+            <ul className="overflow-hidden rounded-(--radius-lg) border border-line">
+              {RANKS.map((r, i) => (
+                <li key={r.name} className="flex items-center gap-3 border-t border-line px-4 py-2.5 first:border-t-0">
+                  <RankBadge rank={(i + 1) as Rank} size={24} decorative />
+                  <span className="font-medium" style={{ color: `var(--rank-${i + 1}-text)` }}>
+                    {r.name}
+                  </span>
+                  <span className="ml-auto font-mono text-[13px] text-text-muted tabular-nums">{r.range}</span>
+                </li>
+              ))}
             </ul>
             <p>You appear in the rankings after 10 ranked matches.</p>
           </Rule>
 
           <Rule title="Answers">
             <p>
-              Numbers only. Whole numbers, or fractions typed like <code>3/4</code>. No decimals. Fractions are simplified for you. One attempt per problem. A wrong answer costs nothing but that problem.
+              Numbers only. Whole numbers, or fractions typed like <code className={code}>3/4</code>. No decimals. Fractions are simplified for you. One attempt per problem. A wrong answer costs nothing but that problem.
             </p>
             <p>
-              A badly formatted answer (like <code>0.5</code>) doesn&apos;t use up your attempt. Negative answers like <code>-3/4</code> work too.
+              A badly formatted answer (like <code className={code}>0.5</code>) doesn&apos;t use up your attempt. Negative answers like <code className={code}>-3/4</code> work too.
             </p>
           </Rule>
 
