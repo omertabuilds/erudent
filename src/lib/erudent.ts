@@ -114,6 +114,16 @@ export type ProfileSummary = {
   created_at: string;
 };
 
+/** A row of the public profiles table, as api.publicPlayers reads it. */
+export type PublicPlayer = {
+  username: string;
+  elo: number;
+  matches_played: number;
+  tagline: string | null;
+  avatar_path: string | null;
+  avatar_url: string | null;
+};
+
 export type RecentMatch = {
   match_id: string;
   mode: "ranked" | "friend" | "async";
@@ -206,6 +216,20 @@ export const api = {
   /** For /u/[username]. Any case. Null if there's no such player. Works signed out. */
   profile: async (sb: SupabaseClient, username: string) =>
     (await call<ProfileSummary[]>(sb, "get_profile", { p_username: username }))[0] ?? null,
+  /**
+   * Public profile fields for these usernames (profiles is world-readable). For the tagline and
+   * picture on /u/[username] and the opponents' rank colors. Works signed out. Unknown names are skipped.
+   */
+  publicPlayers: async (sb: SupabaseClient, usernames: string[]): Promise<PublicPlayer[]> => {
+    const names = [...new Set(usernames)];
+    if (names.length === 0) return [];
+    const { data, error } = await sb
+      .from("profiles")
+      .select("username, elo, matches_played, tagline, avatar_path")
+      .in("username", names);
+    if (error) throw new Error(error.message);
+    return (data as Omit<PublicPlayer, "avatar_url">[]).map((p) => ({ ...p, avatar_url: avatarUrl(sb, p.avatar_path) }));
+  },
   /** Last 10 finished duels, newest first. Works signed out. */
   recentMatches: (sb: SupabaseClient, username: string) =>
     call<RecentMatch[]>(sb, "get_recent_matches", { p_username: username }),
