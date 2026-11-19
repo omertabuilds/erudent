@@ -129,3 +129,16 @@ export async function answerFor(db: Db, matchId: string, slot: string) {
   );
   return res.rows[0].answer;
 }
+
+/** Keys that would carry an answer. A player's view of their opponent must have none of them, at any depth. */
+export const ANSWER_KEYS = ["answer", "answers", "solution"] as const;
+
+/** Every ANSWER_KEYS key found anywhere inside `value` (objects and arrays, any depth). */
+export function answerKeysIn(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap(answerKeysIn);
+  if (value === null || typeof value !== "object") return [];
+  return Object.entries(value).flatMap(([k, v]) => [
+    ...((ANSWER_KEYS as readonly string[]).includes(k) ? [k] : []),
+    ...answerKeysIn(v),
+  ]);
+}

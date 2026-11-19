@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import { answerFor, createDb, makeUser, rpc, seedQuestions, startedAgo, type Db } from "./harness";
+import { answerFor, asUser, createDb, makeUser, rpc, seedQuestions, startedAgo, type Db } from "./harness";
 
 // forfeit_match, and the solve times get_match returns (answered_at, solved_at, resigned).
 
@@ -189,5 +189,88 @@ describe("solve times in get_match", () => {
     expect(m.status).toBe("finished");
     expect(m.resigned).toBe(false);
     expect(m.forfeited_by).toBeNull();
+  });
+});
+
+describe("forfeit-pair flags", () => {
+  type Flag = { match_id: string; user_id: string; reason: string };
+  const pairFlags = async () =>
+    (await db.query<Flag>(`select match_id, user_id, reason from flags where reason like 'forfeit_pair:%' order by id`)).rows;
+
+  /** A new ranked duel between two existing players, clock running. */
+  async function duel(x: string, y: string) {
+    expect(await rpc(db, x, "join_queue")).toBeNull();
+    const mid = await rpc<string>(db, y, "join_queue");
+    expect(mid).toBeTruthy();
+    await startedAgo(db, mid, 60);
+    return mid;
+  }
+
+  test("one forfeit: no flag", async () => {
+    const { a, mid } = await rankedMatch();
+    await forfeit(a, mid);
+    expect(await pairFlags()).toEqual([]);
+  });
+
+  test("second forfeit between the same pair within 24h, either way round: flagged on the forfeiter", async () => {
+    const { a, b, mid } = await rankedMatch();
+    await forfeit(a, mid);
+    const second = await duel(a, b);
+    await forfeit(b, second);
+    expect(await pairFlags()).toEqual([{ match_id: second, user_id: b, reason: `forfeit_pair:${a}:2` }]);
+
+    const third = await duel(a, b);
+    await forfeit(b, third);
+    expect((await pairFlags()).map((f) => f.reason)).toEqual([`forfeit_pair:${a}:2`, `forfeit_pair:${a}:3`]);
+  });
+
+  test("disconnects count as forfeits", async () => {
+    const { a, b, mid } = await rankedMatch();
+    await forfeit(a, mid);
+    const second = await duel(a, b);
+    await db.query(`update match_players set last_seen = now() - interval '31 seconds' where match_id = $1 and user_id = $2`, [second, a]);
+    expect((await rpc<{ status: string }>(db, b, "claim_forfeit", [second])).status).toBe("opponent_forfeited");
+    expect(await pairFlags()).toEqual([{ match_id: second, user_id: a, reason: `forfeit_pair:${b}:2` }]);
+  });
+
+  test("forfeits more than 24h ago don't count", async () => {
+    const { a, b, mid } = await rankedMatch();
+    await forfeit(a, mid);
+    await db.query(`update matches set finished_at = now() - interval '25 hours' where id = $1`, [mid]);
+    await forfeit(a, await duel(a, b));
+    expect(await pairFlags()).toEqual([]);
+  });
+
+  test("other pairs, ordinary finishes and friend duels don't count; the flag changes nothing else", async () => {
+    const { a, b, mid } = await rankedMatch();
+    const carl = await makeUser(db, "carl");
+    await forfeit(a, mid);
+
+    // a vs carl: a different pair
+    await forfeit(a, await duel(a, carl));
+    // a vs b, played out to the end
+    const played = await duel(a, b);
+    for (const s of ["A", "B", "C"]) {
+      await answer(a, played, s);
+      await answer(b, played, s, false);
+    }
+    // a vs b, friend duel forfeit
+    const { match_id: friendly, code } = await rpc<{ match_id: string; code: string }>(db, a, "create_friend_match");
+    await rpc(db, b, "join_friend_match", [code]);
+    await forfeit(a, friendly);
+    expect(await pairFlags()).toEqual([]);
+
+    // The second rated forfeit is flagged, and is otherwise an ordinary forfeit.
+    const before = await profile(a);
+    const flagged = await duel(a, b);
+    await forfeit(a, flagged);
+    expect(await pairFlags()).toHaveLength(1);
+    const m = await getMatch(a, flagged);
+    expect(m).toMatchObject({ status: "finished", forfeited_by: a, resigned: true });
+    expect(await profile(a)).toMatchObject({ matches_played: before.matches_played + 1, losses: before.losses + 1 });
+  });
+
+  test("the browser can't read flags", async () => {
+    await expect(asUser(db, (await rankedMatch()).a, `select * from flags`)).rejects.toThrow(/permission denied/);
   });
 });

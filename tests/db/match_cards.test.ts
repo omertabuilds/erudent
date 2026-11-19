@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import { answerFor, asUser, createDb, makeUser, rpc, seedQuestions, startedAgo, type Db } from "./harness";
+import { answerFor, answerKeysIn, asUser, createDb, makeUser, rpc, seedQuestions, startedAgo, type Db } from "./harness";
 
 type Card = { banner: string; accent: number; avatar_path: string | null; wins: number; losses: number; draws: number };
 type MatchState = {
@@ -60,12 +60,14 @@ describe("get_match player cards", () => {
 
   test("never leaks the opponent's answers", async () => {
     await startedAgo(db, mid, 30);
-    const right = await answerFor(db, mid, "A");
-    await rpc(db, b, "submit_answer", [mid, "A", right]);
+    await rpc(db, b, "submit_answer", [mid, "A", await answerFor(db, mid, "A")]);
+    await rpc(db, a, "submit_answer", [mid, "B", await answerFor(db, mid, "B")]);
     const m = await rpc<MatchState>(db, a, "get_match", [mid]);
     expect(m.opponent?.solved).toEqual(["A"]);
+    // The check can see answers: my own view has them.
+    expect(answerKeysIn(m.me)).toContain("answer");
     expect(m.opponent?.score).toBeNull();
-    expect(JSON.stringify(m.opponent)).not.toContain(JSON.stringify(right));
+    expect(answerKeysIn(m.opponent)).toEqual([]);
   });
 
   test("outsiders still can't see the match", async () => {

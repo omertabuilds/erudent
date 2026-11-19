@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import { answerFor, asUser, createDb, makeUser, rpc, seedQuestions, startedAgo, type Db } from "./harness";
+import { answerFor, answerKeysIn, asUser, createDb, makeUser, rpc, seedQuestions, startedAgo, type Db } from "./harness";
 
 type MatchState = {
   status: string;
@@ -146,8 +146,7 @@ describe("ranked match", () => {
     // Bob sees that Alice solved A, but not her answer
     const bobView = await rpc<MatchState>(db, b, "get_match", [mid]);
     expect(bobView.opponent?.solved).toEqual(["A"]);
-    // Answers are JSON strings: look for the quoted value (a bare "202" also matches timestamps like 2026-…).
-    expect(JSON.stringify(bobView.opponent)).not.toContain(JSON.stringify(await answerFor(db, mid, "A")));
+    expect(answerKeysIn(bobView.opponent)).toEqual([]);
 
     await rpc(db, a, "submit_answer", [mid, "B", await answerFor(db, mid, "B")]);
     await rpc(db, a, "submit_answer", [mid, "C", "1"]); // wrong
