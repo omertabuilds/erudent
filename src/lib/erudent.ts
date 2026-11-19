@@ -35,6 +35,8 @@ export type MatchState = {
   started_at: string | null;
   ends_at: string | null;
   forfeited_by: string | null;
+  /** True when forfeited_by gave up on purpose (forfeit_match); false means they disconnected. */
+  resigned: boolean;
   me: {
     user_id: string;
     username: string;
@@ -44,7 +46,8 @@ export type MatchState = {
     result: "win" | "loss" | "draw" | null;
     focus_strikes: number;
     rank: string;
-    answers: { slot: Slot; answer: string | null; correct: boolean }[];
+    /** answered_at is the server's stamp of the submission. */
+    answers: { slot: Slot; answer: string | null; correct: boolean; answered_at: string }[];
   } & MatchCard;
   opponent: ({
     username: string;
@@ -54,6 +57,8 @@ export type MatchState = {
     score: number | null;
     result: "win" | "loss" | "draw" | null;
     solved: Slot[];
+    /** When each solved slot was solved (server time). Recorded runs: start + the run's own time. */
+    solved_at: Partial<Record<Slot, string>>;
     rank: string;
   } & MatchCard) | null;
   questions: MatchQuestion[];
@@ -202,6 +207,9 @@ export const api = {
     call<FocusResult>(sb, "focus_event", { p_match: id, p_slot: slot }),
   heartbeat: (sb: SupabaseClient, id: string) => call<string>(sb, "heartbeat", { p_match: id }),
   claimForfeit: (sb: SupabaseClient, id: string) => call<{ status: string }>(sb, "claim_forfeit", { p_match: id }),
+  /** Give up: a loss for you, a win for the opponent, Elo as usual. Countdown included. */
+  forfeitMatch: (sb: SupabaseClient, id: string) =>
+    call<{ status: "forfeited" | "time_up" | "match_over" | "not_started" }>(sb, "forfeit_match", { p_match: id }),
   finishMatch: (sb: SupabaseClient, id: string) => call<MatchState>(sb, "finish_match", { p_match: id }),
   myActiveMatch: (sb: SupabaseClient) => call<string | null>(sb, "my_active_match"),
   reportQuestion: (sb: SupabaseClient, id: string, slot: Slot, reason: string) =>
