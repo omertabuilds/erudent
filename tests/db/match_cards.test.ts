@@ -59,6 +59,18 @@ describe("get_match player cards", () => {
     expect(Object.keys(m.opponent!).filter((k) => !(k in before.opponent!)).sort()).toEqual([...CARD_KEYS, ...SOLVE_KEYS.opponent].sort());
   });
 
+  test("keeps every earlier addition: resigned, me.answers[].answered_at, opponent.solved_at", async () => {
+    await startedAgo(db, mid, 30);
+    await rpc(db, a, "submit_answer", [mid, "A", await answerFor(db, mid, "A")]);
+    await rpc(db, b, "submit_answer", [mid, "B", await answerFor(db, mid, "B")]);
+    const m = await rpc<MatchState & { resigned: boolean }>(db, a, "get_match", [mid]);
+    expect(m.resigned).toBe(false);
+    const answers = m.me.answers as { slot: string; answered_at: string }[];
+    expect(answers.map((x) => x.slot)).toEqual(["A"]);
+    expect(Number.isNaN(Date.parse(answers[0].answered_at))).toBe(false);
+    expect(Object.keys(m.opponent!.solved_at as object)).toEqual(["B"]);
+  });
+
   test("never leaks the opponent's answers", async () => {
     await startedAgo(db, mid, 30);
     await rpc(db, b, "submit_answer", [mid, "A", await answerFor(db, mid, "A")]);

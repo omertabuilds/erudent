@@ -13,6 +13,8 @@ import Workspace, { type Stroke } from "@/components/Workspace";
 const POLL_MS = 1500;
 /** Well under DISCONNECT_AFTER_MS (5s) even with a poll's delay on top, so a live opponent never flickers as gone. */
 const HEARTBEAT_MS = 2000;
+/** How often to ask the server whether a silent opponent has passed the 30s forfeit. */
+const CLAIM_FORFEIT_MS = 5000;
 const SLOTS: Slot[] = ["A", "B", "C"];
 /** Points per slot before the questions arrive (countdown). get_match's own points win once they do. */
 const DEFAULT_POINTS: Record<Slot, number> = { A: 1, B: 2, C: 3 };
@@ -100,18 +102,24 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
     : "live";
   const focusMode = match ? match.mode !== "friend" : false;
 
-  // Heartbeat so the server knows we're here; also claim a win if the opponent vanished.
+  // Heartbeat so the server knows we're here.
   useEffect(() => {
     if (phase !== "countdown" && phase !== "live") return;
-    const beat = async () => {
-      await api.heartbeat(sb, matchId).catch(() => {});
-      if (match?.mode !== "async") {
-        const r = await api.claimForfeit(sb, matchId).catch(() => null);
-        if (r?.status === "opponent_forfeited") refresh();
-      }
-    };
+    const beat = () => api.heartbeat(sb, matchId).catch(() => {});
     beat();
     const t = setInterval(beat, HEARTBEAT_MS);
+    return () => clearInterval(t);
+  }, [phase, sb, matchId]);
+
+  // Claim a win if the opponent vanished (the server decides: 30s of silence).
+  useEffect(() => {
+    if ((phase !== "countdown" && phase !== "live") || match?.mode === "async") return;
+    const claim = async () => {
+      const r = await api.claimForfeit(sb, matchId).catch(() => null);
+      if (r?.status === "opponent_forfeited") refresh();
+    };
+    claim();
+    const t = setInterval(claim, CLAIM_FORFEIT_MS);
     return () => clearInterval(t);
   }, [phase, sb, matchId, match?.mode, refresh]);
 
@@ -473,7 +481,7 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
           <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-b border-line pb-4 lg:hidden">
             <CompactPlayer side={sides.me} max={maxPoints} />
             <span className={`${mono} text-text-muted`}>vs</span>
-            {sides.opp ? <CompactPlayer side={sides.opp} max={maxPoints} flip /> : <span />}
+            {sides.opp ? <CompactPlayer side={sides.opp} max={maxPoints} flip gone={oppGone !== null} /> : <span />}
           </div>
         )}
 
@@ -782,9 +790,9 @@ function PlayerCard({ side, max, flip, gone = null }: { side: Side; max: number;
 }
 
 /** Phone: picture, handle, "4/6" and the A/B/C marks on one line per player. */
-function CompactPlayer({ side, max, flip }: { side: Side; max: number; flip?: boolean }) {
+function CompactPlayer({ side, max, flip, gone }: { side: Side; max: number; flip?: boolean; gone?: boolean }) {
   return (
-    <div className={`flex min-w-0 items-center gap-2.5 ${flip ? "flex-row-reverse text-right" : ""}`}>
+    <div className={`flex min-w-0 items-center gap-2.5 ${flip ? "flex-row-reverse text-right" : ""} ${gone ? "opacity-35" : ""}`}>
       <Avatar side={side} size={32} />
       <div className="min-w-0">
         <p
