@@ -86,7 +86,7 @@ describe("get_match player cards", () => {
   test("finish_match returns the cards too", async () => {
     await startedAgo(db, mid, 400); // past the 5-minute clock
     const m = await rpc<MatchState>(db, a, "finish_match", [mid]);
-    expect(m.status).toBe("finished");
+    expect(m.status).toBe("void"); // nobody answered (see sweeper.test.ts)
     expect(m.opponent).toMatchObject({ banner: "mountain", accent: 4 });
   });
 });

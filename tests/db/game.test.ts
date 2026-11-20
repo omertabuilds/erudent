@@ -180,7 +180,7 @@ describe("ranked match", () => {
     expect(r.rows.map((x) => x.elo)).toEqual([1010, 990]);
   });
 
-  test("same score: faster total time wins; zero each is a draw", async () => {
+  test("same score: faster total time wins; both answered, none right, is a draw", async () => {
     const { a, b, mid } = await rankedMatch();
     await startedAgo(db, mid, 60);
     await rpc(db, a, "submit_answer", [mid, "B", await answerFor(db, mid, "B")]);
@@ -199,7 +199,12 @@ describe("ranked match", () => {
     const d = await makeUser(db, "dave");
     await rpc(db, c, "join_queue");
     const mid = await rpc<string>(db, d, "join_queue");
-    await db.query(`update matches set started_at = now() - interval '6 minutes', ends_at = now() - interval '1 minute' where id = $1`, [mid]);
+    await startedAgo(db, mid, 60);
+    // A wrong answer each: 0–0 with answers is a draw (no answers at all would be void).
+    const wrong = String(Number(await answerFor(db, mid, "A")) + 1);
+    await rpc(db, c, "submit_answer", [mid, "A", wrong]);
+    await rpc(db, d, "submit_answer", [mid, "A", wrong]);
+    await db.query(`update matches set ends_at = now() - interval '1 minute' where id = $1`, [mid]);
     return (await rpc<MatchState>(db, c, "finish_match", [mid])).me.result;
   }
 
@@ -207,7 +212,8 @@ describe("ranked match", () => {
     const { a, mid } = await rankedMatch();
     await db.query(`update matches set started_at = now() - interval '6 minutes', ends_at = now() - interval '1 minute' where id = $1`, [mid]);
     expect((await rpc<{ status: string }>(db, a, "submit_answer", [mid, "A", "1"])).status).toBe("time_up");
-    expect((await rpc<MatchState>(db, a, "get_match", [mid])).status).toBe("finished");
+    // The late answer isn't recorded, so nobody answered: void (see sweeper.test.ts).
+    expect((await rpc<MatchState>(db, a, "get_match", [mid])).status).toBe("void");
   });
 
   test("players who've seen a question don't get it again while others exist", async () => {
