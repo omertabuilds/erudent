@@ -37,7 +37,20 @@ const SUPABASE_STUBS = `
   grant select, insert, update, delete on storage.objects to authenticated;
   grant select on storage.buckets to anon, authenticated;
   grant execute on function storage.foldername(text) to anon, authenticated;
+
+  -- pg_cron: the job table and schedule(), so migrations can register jobs and tests can read them.
+  -- Jobs don't run here: tests call the job's function themselves.
+  create schema cron;
+  create table cron.job (jobid bigint generated always as identity primary key, jobname text unique, schedule text, command text);
+  create function cron.schedule(p_name text, p_schedule text, p_command text) returns bigint language sql as $$
+    insert into cron.job (jobname, schedule, command) values (p_name, p_schedule, p_command)
+    on conflict (jobname) do update set schedule = excluded.schedule, command = excluded.command
+    returning jobid
+  $$;
 `;
+
+// PGlite can't load pg_cron; the stub above stands in for it.
+const withoutPgCron = (sql: string) => sql.replace(/^create extension if not exists pg_cron\b.*$/gim, "");
 
 const MIGRATIONS_DIR = join(__dirname, "../../supabase/migrations");
 
@@ -50,7 +63,7 @@ export async function createDb(before: Record<string, (db: PGlite) => Promise<vo
   await db.exec(SUPABASE_STUBS);
   for (const file of readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort()) {
     await before[file]?.(db);
-    await db.exec(readFileSync(join(MIGRATIONS_DIR, file), "utf8"));
+    await db.exec(withoutPgCron(readFileSync(join(MIGRATIONS_DIR, file), "utf8")));
   }
   return db;
 }

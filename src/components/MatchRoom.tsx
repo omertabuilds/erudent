@@ -76,7 +76,7 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
   // Poll match state; stop once it's over.
   useEffect(() => {
     refresh();
-    if (match?.status === "finished") return;
+    if (match?.status === "finished" || match?.status === "void") return;
     const t = setInterval(refresh, POLL_MS);
     return () => clearInterval(t);
   }, [refresh, match?.status]);
@@ -92,7 +92,7 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
   const endsAt = match?.ends_at ? new Date(match.ends_at).getTime() : null;
   const phase: "loading" | "waiting" | "countdown" | "live" | "finished" =
     !match ? "loading"
-    : match.status === "finished" ? "finished"
+    : match.status === "finished" || match.status === "void" ? "finished"
     : match.status === "waiting" || !startsAt ? "waiting"
     : serverNow < startsAt ? "countdown"
     : "live";
@@ -381,7 +381,7 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
                     autoComplete="off"
                     autoFocus
                     aria-label={`Your answer to ${question.slot}`}
-                    placeholder="12 or 3/4"
+                    placeholder="Integer or fraction, like 3/4"
                     className="h-12 w-full min-w-0 rounded-(--radius-md) border border-[#2c2c33] bg-bg px-4 font-mono text-[18px] text-text placeholder:text-[#6e6a62]"
                   />
                   <button disabled={submitting || !input.trim()} className={`${primary} h-12`}>
@@ -928,7 +928,8 @@ function Results({ match, matchId, points, width }: { match: MatchState; matchId
       ? match.resigned ? "You forfeited." : "You disconnected."
       : match.resigned ? "Your opponent forfeited." : "Your opponent disconnected.";
   const mySolved = me.answers.filter((a) => a.correct).length;
-  const title = headline(
+  const isVoid = match.status === "void";
+  const title = isVoid ? "No result." : headline(
     me.result,
     { solved: mySolved, score: me.score },
     { solved: opp?.solved.length ?? 0, score: opp?.score ?? 0 },
@@ -955,7 +956,7 @@ function Results({ match, matchId, points, width }: { match: MatchState; matchId
     <div className={`${card} flex w-full ${width} flex-col px-6 py-10 md:px-8`}>
       <div className="flex flex-col items-center gap-3 text-center">
         <p className={`${mono} text-[#6e6a62]`}>
-          Duel complete · <span className="tabular-nums">{me.score} – {opp?.score ?? 0}</span>
+          {isVoid ? "Duel void" : <>Duel complete · <span className="tabular-nums">{me.score} – {opp?.score ?? 0}</span></>}
         </p>
         <h2 className="text-[clamp(28px,4vw,40px)] leading-[1.1] font-semibold tracking-[-0.04em]">{title}</h2>
         <p className="font-mono text-[20px] tabular-nums">
@@ -976,6 +977,7 @@ function Results({ match, matchId, points, width }: { match: MatchState; matchId
         <p className={caption}>
           {opp ? `Against @${opp.username}` : "No opponent"}
           {opp?.is_ghost ? ", a recorded run" : ""}.{forfeitNote ? ` ${forfeitNote}` : ""}
+          {isVoid ? " Nobody answered before time ran out, so it doesn't count." : ""}
         </p>
         <div className="mt-3 flex flex-wrap justify-center gap-2.5">
           <Link href="/play" className={primary}>

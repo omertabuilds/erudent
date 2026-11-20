@@ -29,7 +29,8 @@ export type MatchCard = Pick<ProfileStyle, "banner" | "accent"> & {
 export type MatchState = {
   id: string;
   mode: "ranked" | "friend" | "async";
-  status: "waiting" | "active" | "finished";
+  /** void: both players left without answering anything (abandoned-match sweeper). No result, no Elo change. */
+  status: "waiting" | "active" | "finished" | "void";
   invite_code: string | null;
   server_now: string;
   started_at: string | null;
