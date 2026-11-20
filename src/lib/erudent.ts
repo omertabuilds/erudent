@@ -60,6 +60,8 @@ export type MatchState = {
     solved: Slot[];
     /** When each solved slot was solved (server time). Recorded runs: start + the run's own time. */
     solved_at: Partial<Record<Slot, string>>;
+    /** Later of their last heartbeat and the match start: what claim_forfeit counts 30s from. null for recorded runs. */
+    last_seen: string | null;
     rank: string;
   } & MatchCard) | null;
   questions: MatchQuestion[];

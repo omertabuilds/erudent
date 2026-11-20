@@ -9,8 +9,9 @@ type MatchState = {
 };
 
 const CARD_KEYS = ["accent", "avatar_path", "banner", "draws", "losses", "wins"];
-// Added later by 20261118130000_forfeit_and_solve_times (forfeit.test.ts covers them).
-const SOLVE_KEYS = { top: ["resigned"], opponent: ["solved_at"] };
+// Added later by 20261118130000_forfeit_and_solve_times (forfeit.test.ts covers them)
+// and 20261121120000_opponent_last_seen (last_seen.test.ts).
+const SOLVE_KEYS = { top: ["resigned"], opponent: ["last_seen", "solved_at"] };
 
 let db: Db;
 let a: string;
