@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { api, avatarUrl, friendlyError, TIER_NAMES, type MatchState, type Slot } from "@/lib/erudent";
 import QuestionCanvas from "@/components/QuestionCanvas";
+import QuestionReport from "@/components/QuestionReport";
 import RankBadge, { type Rank } from "@/components/RankBadge";
 import Workspace, { type Stroke } from "@/components/Workspace";
 
@@ -349,6 +350,7 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
             <p className={`${mono} text-[#6e6a62]`}>
               Question {question.slot} / C · {question.topic} · {pts(question.points)}
             </p>
+            <QuestionReport matchId={matchId} slot={question.slot} />
             {focusMode ? (
               <QuestionCanvas text={question.prompt} size={focused ? 26 : 22} />
             ) : (
@@ -1056,6 +1058,7 @@ function Results({ match, matchId, points, width }: { match: MatchState; matchId
               </span>
             </summary>
             <div className="pb-6">
+              <QuestionReport matchId={matchId} slot={q.slot} />
               <p className="text-[19px] leading-[29px] whitespace-pre-wrap">{q.prompt}</p>
               {q.solution && (
                 <p className="mt-4 text-ink-muted whitespace-pre-wrap">
