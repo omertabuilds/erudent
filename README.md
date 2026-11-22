@@ -70,3 +70,20 @@ Next.js (React, TypeScript), Tailwind, Supabase (auth, Postgres, realtime), Verc
 | Name | Role |
 | --- | --- |
 | Eliam | Lead + backend |
+
+## Local report-button testing
+
+Requires Docker Desktop running with its Linux engine (WSL 2 on Windows).
+
+```powershell
+npm install
+npm run local:start
+npm run local:setup
+npm run dev
+```
+
+Open http://127.0.0.1:3000/dev-login and choose **Start test duel**. This signs in as local Alice and joins local Bob to a friend duel. Bob does not submit answers. You can report questions during the duel or in its results.
+
+The setup script creates two confirmed test accounts, grants local access, and adds 144 sample arithmetic questions across all tiers and both pools. It writes the local URL, public key, and a generated test-account password to ignored `.env.local`. It refuses to target a hosted Supabase instance. The test-login page is disabled outside development and requires a loopback Supabase URL.
+
+Inspect saved reports in local Supabase Studio (URL printed by `npm run local:start`), under the `public.reports` table. No hosted project or Google OAuth configuration is required.
