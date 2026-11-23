@@ -455,6 +455,15 @@ describe("anti-cheat", () => {
     expect((await db.query("select id from reports")).rows).toHaveLength(3);
   });
 
+  test("repeat question reports are ignored", async () => {
+    const { a, mid } = await rankedMatch();
+    await rpc(db, a, "report_question", [mid, "A", "Typo"]);
+    await rpc(db, a, "report_question", [mid, "A", "Typo"]);
+    await rpc(db, a, "report_question", [mid, "A", "Unclear"]);
+    const rows = await db.query("select reason from reports order by id");
+    expect(rows.rows).toEqual([{ reason: "Typo" }, { reason: "Unclear" }]);
+  });
+
   test("reports are saved", async () => {
     const { a, mid } = await rankedMatch();
     await rpc(db, a, "report_question", [mid, "A", "two valid answers"]);

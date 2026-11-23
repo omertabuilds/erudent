@@ -63,6 +63,7 @@ export async function createDb(before: Record<string, (db: PGlite) => Promise<vo
   await db.exec(SUPABASE_STUBS);
   for (const file of readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort()) {
     await before[file]?.(db);
+    // .gitattributes keeps migrations LF; normalize anyway so a stray CRLF checkout still runs.
     await db.exec(withoutPgCron(readFileSync(join(MIGRATIONS_DIR, file), "utf8").replace(/\r\n/g, "\n")));
   }
   return db;
