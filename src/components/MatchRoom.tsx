@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { api, avatarUrl, friendlyError, TIER_NAMES, type MatchState, type Slot } from "@/lib/erudent";
 import QuestionCanvas from "@/components/QuestionCanvas";
+import QuestionReport from "@/components/QuestionReport";
 import RankBadge, { type Rank } from "@/components/RankBadge";
 import Workspace, { type Stroke } from "@/components/Workspace";
 
@@ -346,9 +347,12 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
             aria-labelledby={`tab-${question.slot}`}
             className={`${card} flex w-full ${width} flex-col gap-6 p-6 md:p-8`}
           >
-            <p className={`${mono} text-[#6e6a62]`}>
-              Question {question.slot} / C · {question.topic} · {pts(question.points)}
-            </p>
+            <div className="flex flex-wrap items-start justify-between gap-x-4">
+              <p className={`${mono} py-1 text-[#6e6a62]`}>
+                Question {question.slot} / C · {question.topic} · {pts(question.points)}
+              </p>
+              <QuestionReport matchId={matchId} slot={question.slot} compact />
+            </div>
             {focusMode ? (
               <QuestionCanvas text={question.prompt} size={focused ? 26 : 22} />
             ) : (
@@ -915,9 +919,11 @@ function headline(result: MatchState["me"]["result"], mine: { solved: number; sc
 function Results({ match, matchId, points, width }: { match: MatchState; matchId: string; points: (s: Slot) => number; width: string }) {
   const sb = useRef(createClient()).current;
   const formId = useId();
-  const [reported, setReported] = useState<Set<string>>(new Set());
-  const [reporting, setReporting] = useState<"problem" | "player" | null>(null);
-  const [reportSlot, setReportSlot] = useState<Slot>("A");
+  // Question reports live on each question (QuestionReport); this form reports the opponent only.
+  const [playerReported, setPlayerReported] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const [reportPending, setReportPending] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const me = match.me;
   const opp = match.opponent;
@@ -935,22 +941,23 @@ function Results({ match, matchId, points, width }: { match: MatchState; matchId
     { solved: opp?.solved.length ?? 0, score: opp?.score ?? 0 },
   );
 
-  function sendReport(e: React.FormEvent) {
+  async function sendReport(e: React.FormEvent) {
     e.preventDefault();
     const text = reason.trim();
-    if (!text || !reporting) return;
-    if (reporting === "problem") {
-      api.reportQuestion(sb, matchId, reportSlot, text).catch(() => {});
-      setReported((s) => new Set(s).add(reportSlot));
-    } else {
-      api.reportPlayer(sb, matchId, text).catch(() => {});
-      setReported((s) => new Set(s).add("player"));
+    if (!text || reportPending) return;
+    setReportPending(true);
+    setReportError(null);
+    try {
+      await api.reportPlayer(sb, matchId, text);
+      setPlayerReported(true);
+      setReporting(false);
+      setReason("");
+    } catch {
+      setReportError("Couldn't send your report. Please try again.");
+    } finally {
+      setReportPending(false);
     }
-    setReporting(null);
-    setReason("");
   }
-
-  const openSlots = SLOTS.filter((s) => !reported.has(s));
 
   return (
     <div className={`${card} flex w-full ${width} flex-col px-6 py-10 md:px-8`}>
@@ -1056,6 +1063,7 @@ function Results({ match, matchId, points, width }: { match: MatchState; matchId
               </span>
             </summary>
             <div className="pb-6">
+              <QuestionReport matchId={matchId} slot={q.slot} />
               <p className="text-[19px] leading-[29px] whitespace-pre-wrap">{q.prompt}</p>
               {q.solution && (
                 <p className="mt-4 text-ink-muted whitespace-pre-wrap">
@@ -1067,21 +1075,10 @@ function Results({ match, matchId, points, width }: { match: MatchState; matchId
         ))}
       </div>
 
-      {reporting ? (
+      {opp && !opp.is_ghost && (reporting ? (
         <form onSubmit={sendReport} className="mt-8 flex flex-col gap-3 border-t border-hairline pt-6">
-          {reporting === "problem" ? (
-            <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <legend className="mb-2 text-[15px] font-semibold">Which problem?</legend>
-              {openSlots.map((s) => (
-                <label key={s} className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-[15px]">
-                  <input type="radio" name={`${formId}-slot`} checked={reportSlot === s} onChange={() => setReportSlot(s)} className="accent-ink" />
-                  № {s}
-                </label>
-              ))}
-            </fieldset>
-          ) : null}
           <label htmlFor={`${formId}-reason`} className="text-[15px] font-semibold">
-            {reporting === "problem" ? "What's wrong with it?" : `What did @${opp?.username} do?`}
+            What did @{opp.username} do?
           </label>
           <textarea
             id={`${formId}-reason`}
@@ -1091,15 +1088,17 @@ function Results({ match, matchId, points, width }: { match: MatchState; matchId
             onChange={(e) => setReason(e.target.value)}
             className="w-full rounded-(--radius-md) border border-line bg-bg px-4 py-3 text-text"
           />
+          {reportError && <p role="alert" className={caption}>{reportError}</p>}
           <div className="flex gap-2">
-            <button disabled={!reason.trim()} className={`${secondary} disabled:opacity-40`}>
-              Send
+            <button disabled={!reason.trim() || reportPending} className={`${secondary} disabled:opacity-40`}>
+              {reportPending ? "Sending…" : "Send"}
             </button>
             <button
               type="button"
               onClick={() => {
-                setReporting(null);
+                setReporting(false);
                 setReason("");
+                setReportError(null);
               }}
               className={quiet}
             >
@@ -1109,31 +1108,15 @@ function Results({ match, matchId, points, width }: { match: MatchState; matchId
         </form>
       ) : (
         <div className="mt-8 flex flex-wrap gap-x-6 border-t border-hairline pt-4">
-          {openSlots.length ? (
-            <button
-              type="button"
-              onClick={() => {
-                setReportSlot(openSlots[0]);
-                setReporting("problem");
-              }}
-              className={quiet}
-            >
-              Report problem
-            </button>
+          {playerReported ? (
+            <p className={`${quiet} cursor-default`} role="status">Player reported. Thanks. We read every report.</p>
           ) : (
-            <p className={`${quiet} cursor-default`}>Problems reported.</p>
+            <button type="button" onClick={() => setReporting(true)} className={quiet}>
+              Report @{opp.username}
+            </button>
           )}
-          {opp && !opp.is_ghost &&
-            (reported.has("player") ? (
-              <p className={`${quiet} cursor-default`}>Player reported.</p>
-            ) : (
-              <button type="button" onClick={() => setReporting("player")} className={quiet}>
-                Report @{opp.username}
-              </button>
-            ))}
-          {reported.size > 0 && <p className={`${caption} w-full`}>Thanks. We read every report.</p>}
         </div>
-      )}
+      ))}
     </div>
   );
 }

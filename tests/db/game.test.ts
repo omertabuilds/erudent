@@ -436,6 +436,34 @@ describe("anti-cheat", () => {
     expect(m.me.result).toBe("win");
   });
 
+  test("question reports retain each category and question, and reject outsiders", async () => {
+    const { a, mid } = await rankedMatch();
+    for (const [slot, reason] of [["A", "Wrong answer"], ["B", "Unclear"], ["C", "Typo"]]) {
+      await rpc(db, a, "report_question", [mid, slot, reason]);
+    }
+    const rows = await db.query(
+      `select r.reporter_id, r.match_id, r.kind, r.reason, mq.slot
+       from reports r join match_questions mq on mq.match_id = r.match_id and mq.question_id = r.question_id
+       order by mq.slot`,
+    );
+    expect(rows.rows).toEqual(["Wrong answer", "Unclear", "Typo"].map((reason, i) => ({
+      reporter_id: a, match_id: mid, kind: "question", reason, slot: ["A", "B", "C"][i],
+    })));
+    const outsider = await makeUser(db, "outsider");
+    await expect(rpc(db, outsider, "report_question", [mid, "A", "Typo"])).rejects.toThrow();
+    await expect(rpc(db, a, "report_question", [mid, "D", "Typo"])).rejects.toThrow("invalid_slot");
+    expect((await db.query("select id from reports")).rows).toHaveLength(3);
+  });
+
+  test("repeat question reports are ignored", async () => {
+    const { a, mid } = await rankedMatch();
+    await rpc(db, a, "report_question", [mid, "A", "Typo"]);
+    await rpc(db, a, "report_question", [mid, "A", "Typo"]);
+    await rpc(db, a, "report_question", [mid, "A", "Unclear"]);
+    const rows = await db.query("select reason from reports order by id");
+    expect(rows.rows).toEqual([{ reason: "Typo" }, { reason: "Unclear" }]);
+  });
+
   test("reports are saved", async () => {
     const { a, mid } = await rankedMatch();
     await rpc(db, a, "report_question", [mid, "A", "two valid answers"]);
