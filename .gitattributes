@@ -1,0 +1,4 @@
+
+# SQL dollar-quoted word lists must keep Unix line endings on Windows.
+supabase/migrations/*.sql text eol=lf
+supabase/wordlists/*.txt text eol=lf
