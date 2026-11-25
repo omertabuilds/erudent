@@ -17,7 +17,7 @@ export default function LoginPage() {
         <GoogleSignIn />
       </div>
       <p className={`${authNote} mt-6 border-t border-line pt-4`}>
-        Erudent is invite-only for now: you&apos;ll need a code to play. You must be 13 or older.
+        You must be 13 or older to play.
       </p>
     </AuthShell>
   );

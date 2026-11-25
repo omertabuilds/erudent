@@ -68,7 +68,8 @@ async function answerWrong(uid: string, tier: number | null = null) {
 }
 
 describe("who can practice", () => {
-  test("no invitation code → no_access", async () => {
+  test("invite-only mode: no invitation code → no_access", async () => {
+    await db.query(`update private.settings set enabled = false where key = 'open_access'`); // invite-only mode
     const uid = await makeUser(db, "nocode", 900, 0, false);
     await expect(next(uid)).rejects.toThrow("no_access");
     await expect(submit(uid, "1")).rejects.toThrow("no_access");

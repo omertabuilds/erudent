@@ -9,8 +9,9 @@ type MatchState = {
 };
 
 const CARD_KEYS = ["accent", "avatar_path", "banner", "draws", "losses", "wins"];
-// Added later by 20261118130000_forfeit_and_solve_times (forfeit.test.ts covers them).
-const SOLVE_KEYS = { top: ["resigned"], opponent: ["solved_at"] };
+// Added later by 20261118130000_forfeit_and_solve_times (forfeit.test.ts covers them)
+// and 20261121120000_opponent_last_seen (last_seen.test.ts).
+const SOLVE_KEYS = { top: ["resigned"], opponent: ["last_seen", "solved_at"] };
 
 let db: Db;
 let a: string;
@@ -56,6 +57,18 @@ describe("get_match player cards", () => {
     expect(Object.keys(m).filter((k) => !(k in before)).sort()).toEqual(SOLVE_KEYS.top);
     expect(Object.keys(m.me).filter((k) => !(k in before.me)).sort()).toEqual(CARD_KEYS);
     expect(Object.keys(m.opponent!).filter((k) => !(k in before.opponent!)).sort()).toEqual([...CARD_KEYS, ...SOLVE_KEYS.opponent].sort());
+  });
+
+  test("keeps every earlier addition: resigned, me.answers[].answered_at, opponent.solved_at", async () => {
+    await startedAgo(db, mid, 30);
+    await rpc(db, a, "submit_answer", [mid, "A", await answerFor(db, mid, "A")]);
+    await rpc(db, b, "submit_answer", [mid, "B", await answerFor(db, mid, "B")]);
+    const m = await rpc<MatchState & { resigned: boolean }>(db, a, "get_match", [mid]);
+    expect(m.resigned).toBe(false);
+    const answers = m.me.answers as { slot: string; answered_at: string }[];
+    expect(answers.map((x) => x.slot)).toEqual(["A"]);
+    expect(Number.isNaN(Date.parse(answers[0].answered_at))).toBe(false);
+    expect(Object.keys(m.opponent!.solved_at as object)).toEqual(["B"]);
   });
 
   test("never leaks the opponent's answers", async () => {

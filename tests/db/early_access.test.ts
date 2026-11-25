@@ -163,8 +163,9 @@ describe("access codes", () => {
   });
 });
 
-describe("has_access", () => {
+describe("has_access (invite-only mode)", () => {
   test("false until you redeem a code, then true; another account's code doesn't count", async () => {
+    await db.query(`update private.settings set enabled = false where key = 'open_access'`); // invite-only mode
     const [code] = await makeCodes(1);
     const ada = await signedInUser();
     const bob = await signedInUser();
@@ -176,6 +177,7 @@ describe("has_access", () => {
   });
 
   test("a bad code doesn't grant access", async () => {
+    await db.query(`update private.settings set enabled = false where key = 'open_access'`); // invite-only mode
     const ada = await signedInUser();
     expect(await call("redeem_access_code", UNISSUED, "1.1.1.1", ada)).toBe(false);
     expect(await rpc(db, ada, "has_access")).toBe(false);

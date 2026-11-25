@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, 
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { disconnectLeft } from "@/lib/disconnect";
 import { api, avatarUrl, friendlyError, TIER_NAMES, type MatchState, type Slot } from "@/lib/erudent";
 import QuestionCanvas from "@/components/QuestionCanvas";
 import QuestionReport from "@/components/QuestionReport";
@@ -11,7 +12,10 @@ import RankBadge, { type Rank } from "@/components/RankBadge";
 import Workspace, { type Stroke } from "@/components/Workspace";
 
 const POLL_MS = 1500;
-const HEARTBEAT_MS = 5000;
+/** Well under DISCONNECT_AFTER_MS (5s) even with a poll's delay on top, so a live opponent never flickers as gone. */
+const HEARTBEAT_MS = 2000;
+/** How often to ask the server whether a silent opponent has passed the 30s forfeit. */
+const CLAIM_FORFEIT_MS = 5000;
 const SLOTS: Slot[] = ["A", "B", "C"];
 /** Points per slot before the questions arrive (countdown). get_match's own points win once they do. */
 const DEFAULT_POINTS: Record<Slot, number> = { A: 1, B: 2, C: 3 };
@@ -99,18 +103,24 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
     : "live";
   const focusMode = match ? match.mode !== "friend" : false;
 
-  // Heartbeat so the server knows we're here; also claim a win if the opponent vanished.
+  // Heartbeat so the server knows we're here.
   useEffect(() => {
     if (phase !== "countdown" && phase !== "live") return;
-    const beat = async () => {
-      await api.heartbeat(sb, matchId).catch(() => {});
-      if (match?.mode !== "async") {
-        const r = await api.claimForfeit(sb, matchId).catch(() => null);
-        if (r?.status === "opponent_forfeited") refresh();
-      }
-    };
+    const beat = () => api.heartbeat(sb, matchId).catch(() => {});
     beat();
     const t = setInterval(beat, HEARTBEAT_MS);
+    return () => clearInterval(t);
+  }, [phase, sb, matchId]);
+
+  // Claim a win if the opponent vanished (the server decides: 30s of silence).
+  useEffect(() => {
+    if ((phase !== "countdown" && phase !== "live") || match?.mode === "async") return;
+    const claim = async () => {
+      const r = await api.claimForfeit(sb, matchId).catch(() => null);
+      if (r?.status === "opponent_forfeited") refresh();
+    };
+    claim();
+    const t = setInterval(claim, CLAIM_FORFEIT_MS);
     return () => clearInterval(t);
   }, [phase, sb, matchId, match?.mode, refresh]);
 
@@ -256,6 +266,7 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
   const finished = phase === "finished";
   const live = phase === "live";
   const focused = focusView && live;
+  const oppGone = disconnectLeft(match, live, serverNow);
   const sides = buildSides(sb, match, points, finished, places, live ? slot : null);
   const modeLabel =
     match.mode === "friend" ? "Friend duel · Mathematics" : match.mode === "async" ? "Ranked duel · Recorded run" : "Ranked duel · Mathematics";
@@ -297,6 +308,15 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
         <div className={`flex w-full ${width} flex-col items-center gap-2.5`}>
           <Clock ms={left} size={focused ? "sm" : "lg"} />
           <TimeBar left={left} total={total} />
+          {oppGone !== null && (
+            <p className={`${caption} text-center`}>
+              Opponent disconnected. If they don&apos;t return in <span className="font-mono text-text tabular-nums">{formatClock(oppGone)}</span>, you
+              win by forfeit.
+            </p>
+          )}
+          <p role="status" className="sr-only">
+            {oppGone !== null ? "Opponent disconnected." : ""}
+          </p>
         </div>
 
         <div role="tablist" aria-label="Problems" className={`grid w-full ${width} grid-cols-3 gap-1.5`}>
@@ -465,7 +485,7 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
           <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-b border-line pb-4 lg:hidden">
             <CompactPlayer side={sides.me} max={maxPoints} />
             <span className={`${mono} text-text-muted`}>vs</span>
-            {sides.opp ? <CompactPlayer side={sides.opp} max={maxPoints} flip /> : <span />}
+            {sides.opp ? <CompactPlayer side={sides.opp} max={maxPoints} flip gone={oppGone !== null} /> : <span />}
           </div>
         )}
 
@@ -477,7 +497,7 @@ export default function MatchRoom({ matchId, header, footer }: { matchId: string
           )}
           <div className="flex min-w-0 flex-1 flex-col items-center gap-7">{center}</div>
           {!focused && (
-            <div className="hidden w-[240px] flex-none lg:block">{sides.opp ? <PlayerCard side={sides.opp} max={maxPoints} flip /> : null}</div>
+            <div className="hidden w-[240px] flex-none lg:block">{sides.opp ? <PlayerCard side={sides.opp} max={maxPoints} flip gone={oppGone} /> : null}</div>
           )}
         </div>
       </main>
@@ -684,7 +704,7 @@ function Avatar({ side, size }: { side: Side; size: number }) {
 }
 
 /** Rank banner, picture, handle, badge, Elo and Global, then this duel: each problem's status and the points. Mirrored for the opponent. */
-function PlayerCard({ side, max, flip }: { side: Side; max: number; flip?: boolean }) {
+function PlayerCard({ side, max, flip, gone = null }: { side: Side; max: number; flip?: boolean; gone?: number | null }) {
   const nameColor = side.marked ? `var(--rank-${side.tier}-text)` : "var(--text)";
   const played = side.wins + side.losses + side.draws;
   const stats = [
@@ -693,79 +713,90 @@ function PlayerCard({ side, max, flip }: { side: Side; max: number; flip?: boole
   ];
   if (flip) stats.reverse();
   return (
-    <section aria-label={side.you ? `You, @${side.username}` : `Opponent, @${side.username}`} className="flex flex-col gap-5">
-      <div className={`overflow-hidden rounded-(--radius-lg) border border-line bg-surface ${flip ? "text-right" : ""}`}>
-        <div className="relative h-[84px]" aria-hidden="true">
-          <Image src={`/images/banners/${BANNER_FILES[Math.max(1, side.tier) - 1]}.jpg`} alt="" fill sizes="240px" className="object-cover" />
-          <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_40%,var(--surface)_100%)]" />
-        </div>
-        <div className={`relative -mt-[26px] flex flex-col px-4 pb-4 ${flip ? "items-end" : "items-start"}`}>
-          <Avatar side={side} size={52} />
-          <p className="mt-2.5 text-[17px] leading-6 font-semibold tracking-[-0.02em] break-all" style={{ color: nameColor }}>
-            {side.username}
-          </p>
-          <p className="mt-0.5 text-[12px] leading-4 text-text-muted">{side.ghost ? "Recorded run" : side.you ? "You" : "Opponent"}</p>
-          <div className={`mt-3 flex items-center gap-2 ${flip ? "flex-row-reverse" : ""}`}>
-            {side.marked && <RankBadge rank={side.tier as Rank} size={22} decorative />}
-            <span className="font-mono text-[11px] tracking-[0.12em] uppercase" style={{ color: side.marked ? `var(--rank-${side.tier}-text)` : "var(--text-muted)" }}>
-              {side.tier ? side.rank : "Unranked"}
-            </span>
+    <div className="relative">
+      <section
+        aria-label={side.you ? `You, @${side.username}` : `Opponent, @${side.username}`}
+        className={`flex flex-col gap-5 ${gone !== null ? "opacity-35" : ""}`}
+      >
+        <div className={`overflow-hidden rounded-(--radius-lg) border border-line bg-surface ${flip ? "text-right" : ""}`}>
+          <div className="relative h-[84px]" aria-hidden="true">
+            <Image src={`/images/banners/${BANNER_FILES[Math.max(1, side.tier) - 1]}.jpg`} alt="" fill sizes="240px" className="object-cover" />
+            <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_40%,var(--surface)_100%)]" />
           </div>
-          <dl className="mt-2.5 flex gap-5 font-mono">
-            {stats.map((s) => (
-              <div key={s.k} className="flex flex-col-reverse">
-                <dt className="mt-0.5 text-[10px] tracking-[0.12em] text-[#6e6a62] uppercase">{s.k}</dt>
-                <dd className="text-[22px] leading-7 font-semibold tracking-[-0.03em] tabular-nums">{s.v}</dd>
-              </div>
-            ))}
-          </dl>
+          <div className={`relative -mt-[26px] flex flex-col px-4 pb-4 ${flip ? "items-end" : "items-start"}`}>
+            <Avatar side={side} size={52} />
+            <p className="mt-2.5 text-[17px] leading-6 font-semibold tracking-[-0.02em] break-all" style={{ color: nameColor }}>
+              {side.username}
+            </p>
+            <p className="mt-0.5 text-[12px] leading-4 text-text-muted">{side.ghost ? "Recorded run" : side.you ? "You" : "Opponent"}</p>
+            <div className={`mt-3 flex items-center gap-2 ${flip ? "flex-row-reverse" : ""}`}>
+              {side.marked && <RankBadge rank={side.tier as Rank} size={22} decorative />}
+              <span className="font-mono text-[11px] tracking-[0.12em] uppercase" style={{ color: side.marked ? `var(--rank-${side.tier}-text)` : "var(--text-muted)" }}>
+                {side.tier ? side.rank : "Unranked"}
+              </span>
+            </div>
+            <dl className="mt-2.5 flex gap-5 font-mono">
+              {stats.map((s) => (
+                <div key={s.k} className="flex flex-col-reverse">
+                  <dt className="mt-0.5 text-[10px] tracking-[0.12em] text-[#6e6a62] uppercase">{s.k}</dt>
+                  <dd className="text-[22px] leading-7 font-semibold tracking-[-0.03em] tabular-nums">{s.v}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
         </div>
-      </div>
 
-      <ul aria-label="This duel" className="flex flex-col font-mono text-[12px]">
-        {side.statuses.map((st) => (
-          <li key={st.slot} className={`flex justify-between gap-3 border-t border-line py-2.5 ${flip ? "flex-row-reverse" : ""}`}>
-            <span className={st.tone === "off" ? toneClass.off : "text-text"}>
-              {st.slot} · {pts(st.points)}
+        <ul aria-label="This duel" className="flex flex-col font-mono text-[12px]">
+          {side.statuses.map((st) => (
+            <li key={st.slot} className={`flex justify-between gap-3 border-t border-line py-2.5 ${flip ? "flex-row-reverse" : ""}`}>
+              <span className={st.tone === "off" ? toneClass.off : "text-text"}>
+                {st.slot} · {pts(st.points)}
+              </span>
+              <span className={toneClass[st.tone]}>{st.text}</span>
+            </li>
+          ))}
+          <li className={`flex justify-between gap-3 border-t border-line py-2.5 ${flip ? "flex-row-reverse" : ""}`}>
+            <span className="text-text-muted">POINTS</span>
+            <span className="text-text tabular-nums">
+              {side.score} / {max}
             </span>
-            <span className={toneClass[st.tone]}>{st.text}</span>
           </li>
-        ))}
-        <li className={`flex justify-between gap-3 border-t border-line py-2.5 ${flip ? "flex-row-reverse" : ""}`}>
-          <span className="text-text-muted">POINTS</span>
-          <span className="text-text tabular-nums">
-            {side.score} / {max}
-          </span>
-        </li>
-      </ul>
+        </ul>
 
-      {!side.you && played > 0 && (
-        <dl className="grid grid-cols-2 gap-3 border-t border-line pt-3.5 font-mono text-[11px] tracking-[0.06em] text-[#6e6a62]">
-          <div className={flip ? "text-right" : ""}>
-            <dt>WIN RATE</dt>
-            <dd className="mt-1 text-[15px] text-text">{Math.round((100 * side.wins) / played)}%</dd>
-          </div>
-          <div className={flip ? "order-first" : "text-right"}>
-            <dt>RECORD</dt>
-            <dd className="mt-1 text-[15px] text-text tabular-nums">
-              <span aria-hidden="true">
-                {side.wins}–{side.losses}–{side.draws}
-              </span>
-              <span className="sr-only">
-                {side.wins} wins, {side.losses} losses, {side.draws} draws
-              </span>
-            </dd>
-          </div>
-        </dl>
+        {!side.you && played > 0 && (
+          <dl className="grid grid-cols-2 gap-3 border-t border-line pt-3.5 font-mono text-[11px] tracking-[0.06em] text-[#6e6a62]">
+            <div className={flip ? "text-right" : ""}>
+              <dt>WIN RATE</dt>
+              <dd className="mt-1 text-[15px] text-text">{Math.round((100 * side.wins) / played)}%</dd>
+            </div>
+            <div className={flip ? "order-first" : "text-right"}>
+              <dt>RECORD</dt>
+              <dd className="mt-1 text-[15px] text-text tabular-nums">
+                <span aria-hidden="true">
+                  {side.wins}–{side.losses}–{side.draws}
+                </span>
+                <span className="sr-only">
+                  {side.wins} wins, {side.losses} losses, {side.draws} draws
+                </span>
+              </dd>
+            </div>
+          </dl>
+        )}
+      </section>
+      {gone !== null && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-center">
+          <p className={`${mono} text-text`}>Disconnected</p>
+          <p className="font-mono text-[22px] leading-7 font-semibold tracking-[-0.03em] text-text tabular-nums">{formatClock(gone)}</p>
+        </div>
       )}
-    </section>
+    </div>
   );
 }
 
 /** Phone: picture, handle, "4/6" and the A/B/C marks on one line per player. */
-function CompactPlayer({ side, max, flip }: { side: Side; max: number; flip?: boolean }) {
+function CompactPlayer({ side, max, flip, gone }: { side: Side; max: number; flip?: boolean; gone?: boolean }) {
   return (
-    <div className={`flex min-w-0 items-center gap-2.5 ${flip ? "flex-row-reverse text-right" : ""}`}>
+    <div className={`flex min-w-0 items-center gap-2.5 ${flip ? "flex-row-reverse text-right" : ""} ${gone ? "opacity-35" : ""}`}>
       <Avatar side={side} size={32} />
       <div className="min-w-0">
         <p

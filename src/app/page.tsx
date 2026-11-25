@@ -1,50 +1,30 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import EarlyAccess, { ENTER_CODE_ANCHOR, type RedeemError } from "@/components/EarlyAccess";
 import { createClient } from "@/lib/supabase/server";
-import { api } from "@/lib/erudent";
 
 export const metadata: Metadata = {
-  title: "Erudent — early access",
+  title: "Erudent — ranked math duels",
 };
 
 const edge = "px-4 md:px-12";
 const navLink = "inline-flex min-h-11 items-center text-[15px] font-medium text-text-muted hover:text-text";
 
-/** Sign in for visitors; Play for players; Sign out for an account without a code (the code field is right below). */
-async function NavAction() {
+const primary =
+  "mt-8 inline-flex h-[46px] items-center rounded-(--radius-md) bg-text px-6 text-[15px] font-semibold text-bg hover:bg-text/90";
+
+/** Open to everyone: signed-in players go straight to /play, visitors sign in first. */
+async function signedIn() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user)
-    return (
-      <Link href="/login?next=/play" className={navLink}>
-        Sign in
-      </Link>
-    );
-  if (await api.hasAccess(supabase).catch(() => false))
-    return (
-      <Link href="/play" className={navLink}>
-        Play
-      </Link>
-    );
-  return (
-    <form action="/auth/signout" method="post">
-      <button type="submit" className={`${navLink} cursor-pointer`}>
-        Sign out
-      </button>
-    </form>
-  );
+  return Boolean(user);
 }
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ redeem?: string; access?: string }> }) {
-  // redeem: set by /redeem/[code] when a code fails after sign-in.
-  // access=required: set when /play turns away a player without a redeemed code.
-  const { redeem, access } = await searchParams;
-  const redeemError: RedeemError | null =
-    redeem === "invalid" || redeem === "limited" || redeem === "error" ? redeem : null;
+export default async function Home() {
+  const user = await signedIn();
+  const playHref = user ? "/play" : "/login?next=/play";
 
   return (
     // Always dark: the copy sits on a night photograph in either theme.
@@ -75,7 +55,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           <span className="text-[17px] leading-none font-semibold tracking-[-0.02em]">Erudent</span>
         </Link>
         <nav aria-label="Site">
-          <NavAction />
+          <Link href={playHref} className={navLink}>
+            {user ? "Play" : "Sign in"}
+          </Link>
         </nav>
       </header>
 
@@ -86,14 +68,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
             aria-hidden="true"
             className="pointer-events-none absolute top-1/2 left-1/2 -z-10 size-[840px] -translate-x-1/2 -translate-y-1/2 bg-[radial-gradient(closest-side,rgba(11,11,13,0.55),rgba(11,11,13,0))]"
           />
-          <p className="font-mono text-[12px] leading-none tracking-[0.14em] text-text-muted">EARLY ACCESS</p>
+          <p className="font-mono text-[12px] leading-none tracking-[0.14em] text-text-muted">NOW OPEN</p>
           <h1 className="mt-[22px] max-w-[780px] text-[clamp(40px,8vw,64px)] leading-none font-semibold tracking-[-0.045em] text-balance">
             Rank among the sharpest minds.
           </h1>
           <p className="mt-[22px] max-w-[480px] text-[18px] leading-7 tracking-[-0.01em] text-[#b3afa6]">
             Timed 1v1 duels on competition problems. One global rank.
           </p>
-          <EarlyAccess redeemError={redeemError} needsCode={access === "required"} anchorId={ENTER_CODE_ANCHOR} />
+          <Link href={playHref} className={primary}>
+            Play now
+          </Link>
         </div>
       </main>
 

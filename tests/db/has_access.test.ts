@@ -1,14 +1,19 @@
 import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, test } from "vitest";
-import { answerFor, createDb, grantAccess, makeUser, rpc, seedQuestions, startedAgo, type Db } from "./harness";
+import { answerFor, asUser, createDb, grantAccess, makeUser, rpc, seedQuestions, startedAgo, type Db } from "./harness";
 
-// Playing needs a redeemed invitation code, enforced in the database whatever the app does.
+// Invite-only mode (open_access off): playing needs a redeemed invitation code,
+// enforced in the database whatever the app does. Open mode is tested at the bottom.
 
 let db: Db;
+
+const setOpenAccess = (on: boolean) =>
+  db.query(`update private.settings set enabled = $1 where key = 'open_access'`, [on]);
 
 beforeEach(async () => {
   db = await createDb();
   await seedQuestions(db);
+  await setOpenAccess(false);
 });
 
 const noCode = (name: string) => makeUser(db, name, 900, 0, false);
@@ -96,4 +101,40 @@ test("the migration drops queued players who have no code", async () => {
   });
   const q = await fresh.query<{ user_id: string }>(`select user_id from queue`);
   expect(q.rows).toEqual([{ user_id: ids.with_code }]);
+});
+
+describe("open access (public launch)", () => {
+  test("ships switched on", async () => {
+    const fresh = await createDb();
+    const r = await fresh.query<{ enabled: boolean }>(`select enabled from private.settings where key = 'open_access'`);
+    expect(r.rows[0].enabled).toBe(true);
+  });
+
+  test("a player without a code can queue, host and join", async () => {
+    await setOpenAccess(true);
+    const uid = await noCode("newcomer");
+    expect(await rpc<boolean>(db, uid, "has_access")).toBe(true);
+    expect(await rpc(db, uid, "join_queue")).toBeNull();
+    const host = await noCode("host2");
+    const { code } = await rpc<{ code: string }>(db, host, "create_friend_match");
+    const guest = await noCode("guest2");
+    await expect(rpc(db, guest, "join_friend_match", [code])).resolves.toBeDefined();
+  });
+
+  test("switching it off locks out code-less players but keeps code holders in", async () => {
+    await setOpenAccess(true);
+    const open = await noCode("walkin");
+    const coded = await noCode("coded");
+    const [c] = (await db.query<{ c: string }>(`select private.create_access_codes(1, 'test') as c`)).rows.map((r) => r.c);
+    expect(await rpc(db, coded, "redeem_access_code", [c])).toBe(true);
+    await setOpenAccess(false);
+    await expect(rpc(db, open, "join_queue")).rejects.toThrow("no_access");
+    expect(await rpc(db, coded, "join_queue")).toBeNull();
+  });
+
+  test("the browser can't read or flip the switch", async () => {
+    const uid = await noCode("sneaky");
+    await expect(asUser(db, uid, `select enabled from private.settings`)).rejects.toThrow();
+    await expect(asUser(db, uid, `update private.settings set enabled = false`)).rejects.toThrow();
+  });
 });
