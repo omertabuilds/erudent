@@ -19,8 +19,9 @@ export const metadata: Metadata = {
   description: "Ranked 1v1 math duels. Climb from Novice to Erudite.",
 };
 
-// Dark is the default. Switch to light before first paint if the device asks for it.
-const themeScript = `try{if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light"}catch(e){}`;
+// Dark is the default. Before first paint: use the theme saved in Settings, otherwise light if the device asks for it.
+// The key matches THEME_KEY in src/lib/preferences.ts.
+const themeScript = `try{var t=localStorage.getItem("erudent-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;else if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light"}catch(e){}`;
 
 export default function RootLayout({
   children,
