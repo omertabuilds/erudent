@@ -17,7 +17,7 @@ export type HeaderState = "signed-out" | "no-access" | "player" | "setup";
 /**
  * Lockup left; Rules, Rankings and the action for this visitor right.
  * - signed out → Sign in
- * - signed in with a redeemed code → Play
+ * - signed in with a redeemed code → Settings (hidden on phones: the lobby banner's gear links there) and Play
  * - signed in without one → Enter code (opens the code tab below) and Sign out,
  *   for someone signed in with the wrong account
  * - signed in, still choosing a username (onboarding, rename) → Sign out only
@@ -33,7 +33,7 @@ export default async function SiteHeader({ current }: { current?: Current } = {}
 }
 
 /** `current` marks the page you're on: its link drops the button look and gets aria-current. */
-type Current = "play" | "rankings";
+type Current = "play" | "rankings" | "settings";
 
 export function SiteHeaderView({ state, current }: { state: HeaderState; current?: Current }) {
   return (
@@ -56,6 +56,15 @@ export function SiteHeaderView({ state, current }: { state: HeaderState; current
         {state === "signed-out" && (
           <Link href="/login?next=/play" className={action}>
             Sign in
+          </Link>
+        )}
+        {state === "player" && (
+          <Link
+            href="/settings"
+            aria-current={current === "settings" ? "page" : undefined}
+            className={`${link} aria-[current=page]:text-ink max-sm:hidden`}
+          >
+            Settings
           </Link>
         )}
         {state === "player" &&

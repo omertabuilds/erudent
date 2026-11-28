@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import type { MyPlayer } from "@/lib/erudent";
 import { TIER_NAMES } from "@/lib/erudent";
 import RankBadge, { type Rank } from "@/components/RankBadge";
@@ -74,6 +75,30 @@ export default function LobbyBanner({
           aria-hidden="true"
           className="absolute inset-0 bg-[linear-gradient(to_right,rgba(11,11,13,0.8)_0%,rgba(11,11,13,0)_40%,rgba(11,11,13,0)_70%,rgba(11,11,13,0.6)_100%)]"
         />
+
+        {/* Settings, left of the pencil and drawn the same way. The header's Settings link is hidden on phones, so this is the way there. */}
+        <Link
+          href="/settings"
+          aria-label="Settings"
+          className="group absolute top-[11px] right-[calc(1rem-7px+44px)] z-10 flex size-11 items-center justify-center md:right-[calc(2.5rem-7px+44px)]"
+        >
+          <span className="flex size-[30px] items-center justify-center rounded-[6px] bg-[rgba(11,11,13,0.45)] text-[#d6d2c9] group-hover:bg-[rgba(11,11,13,0.7)] group-hover:text-text">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+            </svg>
+          </span>
+        </Link>
 
         {/* 30px pencil inside a 44px hit area. */}
         <button
