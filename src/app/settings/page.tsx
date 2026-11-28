@@ -18,17 +18,14 @@ export const metadata: Metadata = {
  * Only what the database supports today. Bio, school, password and delete wait on new database functions.
  */
 export default async function SettingsPage() {
-  // Sends anyone who is signed out, without a code, or still choosing a username somewhere else first.
-  const { supabase, profile } = await requirePlayer("/settings");
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const email = user?.email ?? null;
-  const viaGoogle = user?.app_metadata?.provider === "google";
+  // Sends anyone who is signed out, or still making or renaming a profile, somewhere else first.
+  const { user, profile } = await requirePlayer("/settings");
+  const email = user.email ?? null;
+  const viaGoogle = user.app_metadata?.provider === "google";
 
   return (
     <div className="flex min-h-screen flex-col bg-bg font-ui text-[17px] leading-[26px] text-text">
-      <SiteHeaderView state="player" />
+      <SiteHeaderView state="player" current="settings" />
 
       <main className="mx-auto w-full max-w-[960px] flex-[1_0_auto] px-4 pt-8 pb-14 md:px-10">
         <h1 className="text-[clamp(36px,5vw,56px)] leading-none font-extrabold tracking-[-0.03em]">Settings</h1>

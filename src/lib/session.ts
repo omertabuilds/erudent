@@ -15,5 +15,5 @@ export async function requirePlayer(next: string) {
   if (!access) redirect("/?access=required"); // landing page opens on "I have a code"
   if (!profile) redirect(`/onboarding?next=${encodeURIComponent(next)}`);
   if (profile.needs_rename) redirect(`/onboarding/rename?next=${encodeURIComponent(next)}`);
-  return { supabase, profile };
+  return { supabase, user, profile };
 }
